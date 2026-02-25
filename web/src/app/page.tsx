@@ -6,6 +6,7 @@ import { useDuckDB } from '@/hooks/useDuckDB';
 import { GenerativeInsightCard, type ChartType } from '@/components/GenerativeInsightCard';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { MermaidDiagram } from '@/components/MermaidDiagram';
 import { Send, Loader2, Database, AlertCircle } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
@@ -294,7 +295,46 @@ export default function ChatDashboard() {
                           textContent
                         ) : (
                           <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-strong:text-gray-900 prose-a:text-indigo-600 prose-blockquote:border-indigo-300 prose-blockquote:text-gray-600 prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-indigo-700 prose-code:text-xs prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-th:bg-gray-50">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                code({ className, children, ...props }) {
+                                  const match = /language-(\w+)/.exec(className || '');
+                                  const lang = match?.[1];
+                                  const codeString = String(children).replace(/\n$/, '');
+                                  
+                                  // Render mermaid diagrams
+                                  if (lang === 'mermaid') {
+                                    return <MermaidDiagram code={codeString} />;
+                                  }
+                                  
+                                  // Multi-line code blocks
+                                  if (lang) {
+                                    return (
+                                      <div className="relative my-2">
+                                        <div className="absolute top-0 right-0 px-2 py-0.5 text-[10px] font-medium text-gray-400 bg-gray-800 rounded-bl-md rounded-tr-md">
+                                          {lang}
+                                        </div>
+                                        <code className={className} {...props}>
+                                          {children}
+                                        </code>
+                                      </div>
+                                    );
+                                  }
+                                  
+                                  // Inline code
+                                  return <code className={className} {...props}>{children}</code>;
+                                },
+                                // Styled tables
+                                table({ children }) {
+                                  return (
+                                    <div className="overflow-x-auto my-3 border border-gray-200 rounded-lg">
+                                      <table className="min-w-full text-sm">{children}</table>
+                                    </div>
+                                  );
+                                },
+                              }}
+                            >
                               {textContent}
                             </ReactMarkdown>
                           </div>
