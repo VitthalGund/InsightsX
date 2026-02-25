@@ -1,0 +1,141 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Activity, ShieldAlert, CheckCircle2 } from "lucide-react";
+
+export default function RegisterPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message || "Registration failed");
+        setLoading(false);
+        return;
+      }
+
+      setSuccess(true);
+      setIsAdmin(data.user?.role === "admin");
+      setLoading(false);
+    } catch (err) {
+      setError("An unexpected error occurred");
+      setLoading(false);
+    }
+  };
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-[#020617] flex justify-center items-center p-4">
+        <div className="w-full max-w-md bg-[#0f172a] rounded-xl border border-white/10 p-8 shadow-2xl text-center">
+          <div className="flex justify-center mb-6">
+            <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center border border-green-500/30">
+              <CheckCircle2 className="w-8 h-8 text-green-400" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-semibold text-white mb-4">Registration Successful!</h2>
+          
+          {isAdmin ? (
+             <div className="mb-6 bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-lg">
+                <p className="text-indigo-300 text-sm">You are the first user to register. You have been automatically granted <span className="font-semibold">Admin</span> privileges and approved.</p>
+             </div>
+          ) : (
+             <div className="mb-6 bg-amber-500/10 border border-amber-500/20 p-4 rounded-lg">
+               <div className="flex items-center justify-center gap-2 mb-2">
+                 <ShieldAlert className="w-5 h-5 text-amber-400" />
+                 <h3 className="font-medium text-amber-400">Pending Approval</h3>
+               </div>
+               <p className="text-amber-300/80 text-sm">Your account has been created, but requires an administrator to approve it before you can log in and access the chat.</p>
+             </div>
+          )}
+
+          <Link href="/login" className="inline-block w-full py-3 px-4 bg-[#1e293b] hover:bg-[#334155] border border-white/10 text-white rounded-lg font-medium transition-colors">
+            Return to Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#020617] flex flex-col justify-center items-center p-4">
+      <div className="w-full max-w-md bg-[#0f172a] rounded-xl border border-white/10 p-8 shadow-2xl">
+        <div className="flex justify-center mb-8">
+          <div className="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
+            <Activity className="w-6 h-6 text-indigo-400" />
+          </div>
+        </div>
+        <h2 className="text-2xl font-semibold text-white text-center mb-2">Create Account</h2>
+        <p className="text-gray-400 text-center mb-8">Join InsightsX Analytics</p>
+
+        {error && (
+          <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg bg-[#1e293b] border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              placeholder="you@example.com"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg bg-[#1e293b] border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              placeholder="At least 6 characters"
+              required
+              minLength={6}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors mt-6"
+          >
+            {loading ? "Creating Account..." : "Register"}
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-gray-400">
+          Already have an account?{" "}
+          <Link href="/login" className="text-indigo-400 hover:text-indigo-300 transition-colors">
+            Sign In
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+}

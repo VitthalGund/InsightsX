@@ -7,8 +7,9 @@ import { GenerativeInsightCard, type ChartType } from '@/components/GenerativeIn
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { MermaidDiagram } from '@/components/MermaidDiagram';
-import { Send, Loader2, Database, AlertCircle } from 'lucide-react';
+import { Send, Loader2, Database, AlertCircle, LogOut, ShieldAlert } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+import { useSession, signOut } from "next-auth/react";
 
 interface ChartProps {
   type: ChartType;
@@ -22,6 +23,7 @@ interface ToolData extends ChartProps {
 }
 
 export default function ChatDashboard() {
+  const { data: session } = useSession();
   const { db, loading: dbLoading, error: dbError } = useDuckDB();
   const [toolDataStore, setToolDataStore] = useState<Record<string, ToolData>>({});
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -246,6 +248,27 @@ export default function ChatDashboard() {
                 {q}
               </button>
             ))}
+          </div>
+        </div>
+        
+        {/* User Profile / Logout */}
+        <div className="p-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between mt-auto shrink-0">
+          <div className="text-[13px] font-medium text-gray-700 truncate min-w-0 pr-3">
+             {session?.user?.email}
+          </div>
+          <div className="flex gap-1 shrink-0">
+            {session?.user?.role === 'admin' && (
+              <a href="/admin" className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100" title="Admin Dashboard">
+                <ShieldAlert className="w-4 h-4" />
+              </a>
+            )}
+            <button
+              onClick={() => signOut()}
+              className="p-2 text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors border border-transparent hover:border-red-100"
+              title="Sign Out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
