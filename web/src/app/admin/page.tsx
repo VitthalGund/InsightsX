@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { ShieldAlert, Users, CheckCircle2, XCircle } from "lucide-react";
+import Link from "next/link";
+import { ShieldAlert, Users, CheckCircle2, LogOut, MessageSquare } from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
 
 interface UserData {
   _id: string;
@@ -72,15 +73,29 @@ export default function AdminPanel() {
   return (
     <div className="min-h-screen bg-[#020617] p-8 text-white">
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="p-3 bg-indigo-500/20 rounded-xl border border-indigo-500/30">
-            <Users className="w-6 h-6 text-indigo-400" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-indigo-500/20 rounded-xl border border-indigo-500/30">
+              <Users className="w-6 h-6 text-indigo-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-linear-to-r from-indigo-400 to-purple-400">
+                Admin Dashboard
+              </h1>
+              <p className="text-gray-400 text-sm">Manage user access and approvals for InsightsX</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
-              Admin Dashboard
-            </h1>
-            <p className="text-gray-400 text-sm">Manage user access and approvals for InsightsX</p>
+          
+          <div className="flex items-center gap-3">
+            <Link href="/" className="px-4 py-2 flex items-center gap-2 text-sm font-medium bg-[#1e293b] hover:bg-[#334155] border border-white/10 text-white rounded-lg transition-colors">
+              <MessageSquare className="w-4 h-4" /> App
+            </Link>
+            <button
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className="px-4 py-2 flex items-center gap-2 text-sm font-medium bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-lg transition-colors"
+            >
+              <LogOut className="w-4 h-4" /> Sign Out
+            </button>
           </div>
         </div>
 

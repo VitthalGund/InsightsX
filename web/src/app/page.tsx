@@ -10,6 +10,7 @@ import { MermaidDiagram } from '@/components/MermaidDiagram';
 import { Send, Loader2, Database, AlertCircle, LogOut, ShieldAlert } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useSession, signOut } from "next-auth/react";
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface ChartProps {
   type: ChartType;
@@ -216,15 +217,17 @@ export default function ChatDashboard() {
   ];
 
   return (
-    <div className="flex h-screen bg-gray-50 font-sans">
+    <div className="flex h-screen bg-gray-50 dark:bg-[#020617] font-sans transition-colors">
       {/* Sidebar */}
-      <div className="w-80 bg-white border-r border-gray-200 shadow-sm flex flex-col">
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center gap-2 text-indigo-600 mb-2">
-            <Database className="h-5 w-5" />
-            <h1 className="text-lg font-bold tracking-tight">InsightsX OLAP</h1>
+      <div className="w-80 bg-white dark:bg-[#0f172a] border-r border-gray-200 dark:border-white/10 shadow-sm flex flex-col transition-colors">
+        <div className="p-6 border-b border-gray-100 dark:border-white/10 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 mb-2">
+              <Database className="h-5 w-5" />
+              <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">InsightsX OLAP</h1>
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 leading-tight">Zero-latency In-Browser Analytics using DuckDB-WASM × AI.</p>
           </div>
-          <p className="text-sm text-gray-500 leading-tight">Zero-latency In-Browser Analytics using DuckDB-WASM × AI.</p>
         </div>
         <div className="p-6 flex-1 overflow-y-auto">
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Architecture</h3>
@@ -252,37 +255,38 @@ export default function ChatDashboard() {
         </div>
         
         {/* User Profile / Logout */}
-        <div className="p-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between mt-auto shrink-0">
-          <div className="text-[13px] font-medium text-gray-700 truncate min-w-0 pr-3">
+        <div className="p-4 border-t border-gray-100 dark:border-white/10 bg-gray-50 dark:bg-[#1e293b] flex items-center justify-between mt-auto shrink-0 transition-colors">
+          <div className="text-[13px] font-medium text-gray-700 dark:text-gray-300 truncate min-w-0 pr-3">
              {session?.user?.email}
           </div>
           <div className="flex gap-1 shrink-0">
+            <ThemeToggle />
             {session?.user?.role === 'admin' && (
-              <a href="/admin" className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100" title="Admin Dashboard">
-                <ShieldAlert className="w-4 h-4" />
+              <a href="/admin" className="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 rounded-lg transition-colors border border-transparent hover:border-indigo-100 dark:hover:border-indigo-500/30" title="Admin Dashboard">
+                <ShieldAlert className="w-5 h-5" />
               </a>
             )}
             <button
               onClick={() => signOut()}
-              className="p-2 text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors border border-transparent hover:border-red-100"
+              className="p-2 text-gray-500 dark:text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/20 dark:hover:text-red-400 rounded-lg transition-colors border border-transparent hover:border-red-100 dark:hover:border-red-500/30"
               title="Sign Out"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-5 h-5" />
             </button>
           </div>
         </div>
       </div>
 
       {/* Main Chat */}
-      <div className="flex-1 flex flex-col min-w-0 bg-white">
+      <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-[#020617] transition-colors">
         <div className="flex-1 overflow-y-auto px-8 w-full max-w-4xl mx-auto py-8">
           {messages.length === 0 && (
             <div className="h-full flex flex-col items-center justify-center text-gray-400 space-y-4">
-              <div className="h-16 w-16 bg-linear-to-tr from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 rotate-3">
+              <div className="h-16 w-16 bg-linear-to-tr from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-indigo-900/40 rotate-3">
                 <Database className="h-8 w-8 text-white -rotate-3" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-800">InsightsX Analytics</h2>
-              <p className="text-center max-w-md">
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">InsightsX Analytics</h2>
+              <p className="text-center max-w-md text-gray-500 dark:text-gray-400">
                 Ask anything about UPI transaction data. Get visualizations, business insights, and strategic analysis — all processed locally in your browser.
               </p>
             </div>
@@ -312,12 +316,12 @@ export default function ChatDashboard() {
                       <div className={`p-4 rounded-2xl text-[15px] leading-relaxed shadow-sm border ${
                         m.role === 'user'
                           ? 'bg-indigo-600 text-white rounded-tr-none border-transparent'
-                          : 'bg-white text-gray-800 rounded-tl-none border-gray-100'
+                          : 'bg-white dark:bg-[#0f172a] text-gray-800 dark:text-gray-200 rounded-tl-none border-gray-100 dark:border-white/10'
                       }`}>
                         {m.role === 'user' ? (
                           textContent
                         ) : (
-                          <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-strong:text-gray-900 prose-a:text-indigo-600 prose-blockquote:border-indigo-300 prose-blockquote:text-gray-600 prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-indigo-700 prose-code:text-xs prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-th:bg-gray-50">
+                          <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-gray-900 dark:prose-headings:text-gray-100 prose-strong:text-gray-900 dark:prose-strong:text-white prose-a:text-indigo-600 dark:prose-a:text-indigo-400 prose-blockquote:border-indigo-300 dark:prose-blockquote:border-indigo-500/50 prose-blockquote:text-gray-600 dark:prose-blockquote:text-gray-400 prose-code:bg-gray-100 dark:prose-code:bg-[#1e293b] prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-indigo-700 dark:prose-code:text-indigo-300 prose-code:text-xs prose-pre:bg-gray-900 dark:prose-pre:bg-[#0f172a] prose-pre:text-gray-100 prose-th:bg-gray-50 dark:prose-th:bg-[#1e293b] prose-td:border-gray-200 dark:prose-td:border-white/10 prose-th:border-gray-200 dark:prose-th:border-white/10">
                             <ReactMarkdown
                               remarkPlugins={[remarkGfm]}
                               components={{
@@ -425,13 +429,13 @@ export default function ChatDashboard() {
         </div>
 
         {/* Input */}
-        <div className="p-4 bg-white border-t border-gray-100 pb-8 px-8 max-w-4xl mx-auto w-full">
+        <div className="p-4 bg-white dark:bg-[#020617] border-t border-gray-100 dark:border-white/10 pb-8 px-8 max-w-4xl mx-auto w-full transition-colors">
           <form onSubmit={onSubmit} className="relative flex items-center">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask anything about the UPI transaction data..."
-              className="w-full bg-gray-50 border border-gray-200 rounded-full pl-6 pr-14 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-sans text-[15px] shadow-sm"
+              className="w-full bg-white dark:bg-[#0f172a] border-gray-200 dark:border-white/10 border text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 rounded-full pl-6 pr-14 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-sans text-[15px] shadow-sm"
               disabled={isLoading}
             />
             <button

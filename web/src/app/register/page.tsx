@@ -47,17 +47,17 @@ export default function RegisterPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-[#020617] flex justify-center items-center p-4">
-        <div className="w-full max-w-md bg-[#0f172a] rounded-xl border border-white/10 p-8 shadow-2xl text-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-[#020617] flex justify-center items-center p-4 transition-colors">
+        <div className="w-full max-w-md bg-white dark:bg-[#0f172a] rounded-xl border border-gray-200 dark:border-white/10 p-8 shadow-2xl text-center transition-colors">
           <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center border border-green-500/30">
-              <CheckCircle2 className="w-8 h-8 text-green-400" />
+            <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-500/20 flex items-center justify-center border border-green-200 dark:border-green-500/30">
+              <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400" />
             </div>
           </div>
-          <h2 className="text-2xl font-semibold text-white mb-4">Registration Successful!</h2>
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Registration Successful!</h2>
           
           {isAdmin ? (
-             <div className="mb-6 bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-lg">
+             <div className="mb-6 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 p-4 rounded-lg">
                 <p className="text-indigo-300 text-sm">You are the first user to register. You have been automatically granted <span className="font-semibold">Admin</span> privileges and approved.</p>
              </div>
           ) : (
@@ -70,7 +70,7 @@ export default function RegisterPage() {
              </div>
           )}
 
-          <Link href="/login" className="inline-block w-full py-3 px-4 bg-[#1e293b] hover:bg-[#334155] border border-white/10 text-white rounded-lg font-medium transition-colors">
+          <Link href="/login" className="inline-block w-full py-3 px-4 bg-gray-100 dark:bg-[#1e293b] hover:bg-gray-200 dark:hover:bg-[#334155] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white rounded-lg font-medium transition-colors">
             Return to Login
           </Link>
         </div>
@@ -79,15 +79,15 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#020617] flex flex-col justify-center items-center p-4">
-      <div className="w-full max-w-md bg-[#0f172a] rounded-xl border border-white/10 p-8 shadow-2xl">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#020617] flex flex-col justify-center items-center p-4 transition-colors">
+      <div className="w-full max-w-md bg-white dark:bg-[#0f172a] rounded-xl border border-gray-200 dark:border-white/10 p-8 shadow-2xl transition-colors">
         <div className="flex justify-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
-            <Activity className="w-6 h-6 text-indigo-400" />
+          <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center border border-indigo-200 dark:border-indigo-500/30">
+            <Activity className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
           </div>
         </div>
-        <h2 className="text-2xl font-semibold text-white text-center mb-2">Create Account</h2>
-        <p className="text-gray-400 text-center mb-8">Join InsightsX Analytics</p>
+        <h2 className="text-2xl font-semibold text-gray-900 dark:text-white text-center mb-2">Create Account</h2>
+        <p className="text-gray-500 dark:text-gray-400 text-center mb-8">Join InsightsX Analytics</p>
 
         {error && (
           <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">
@@ -97,23 +97,23 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-[#1e293b] border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              className="w-full px-4 py-3 rounded-lg bg-gray-50 dark:bg-[#1e293b] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
               placeholder="you@example.com"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-[#1e293b] border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              className="w-full px-4 py-3 rounded-lg bg-gray-50 dark:bg-[#1e293b] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
               placeholder="At least 6 characters"
               required
               minLength={6}
@@ -129,9 +129,9 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-400">
+        <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
           Already have an account?{" "}
-          <Link href="/login" className="text-indigo-400 hover:text-indigo-300 transition-colors">
+          <Link href="/login" className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors font-medium">
             Sign In
           </Link>
         </p>

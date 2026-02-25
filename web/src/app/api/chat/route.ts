@@ -2,6 +2,8 @@ import { convertToModelMessages, streamText, UIMessage } from 'ai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOllama } from 'ollama-ai-provider-v2';
 import { z } from 'zod';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "../auth/[...nextauth]/route";
 
 export const maxDuration = 60;
 
@@ -212,6 +214,14 @@ Structure responses with:
 // ─── Request Handler ────────────────────────────────────────────────
 export async function POST(req: Request) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.isApproved) {
+            return new Response(
+                JSON.stringify({ error: "Unauthorized. Your account is pending admin approval." }),
+                { status: 401, headers: { 'Content-Type': 'application/json' } }
+            );
+        }
+
         const { messages: uiMessages }: { messages: UIMessage[] } = await req.json();
         const messages = await convertToModelMessages(uiMessages);
 
