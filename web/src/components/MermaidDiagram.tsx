@@ -130,13 +130,24 @@ export function MermaidDiagram({ code }: { code: string }) {
   const openFullscreen = useCallback(() => { if (svg) setIsFullscreen(true); }, [svg]);
   const closeFullscreen = useCallback(() => setIsFullscreen(false), []);
 
+  const [debouncedCode, setDebouncedCode] = useState(code);
+
+  // Debounce the code changes to avoid rendering unfinished diagrams constantly
   useEffect(() => {
-    const sanitized = sanitizeMermaidCode(code);
-    if (sanitized === prevCodeRef.current) return;
-    prevCodeRef.current = sanitized;
+    const timer = setTimeout(() => {
+      setDebouncedCode(code);
+    }, 1500); // 1.5s debounce since AI streams slowly
+    return () => clearTimeout(timer);
+  }, [code]);
+
+  useEffect(() => {
+    const sanitized = sanitizeMermaidCode(debouncedCode);
     if (!sanitized || sanitized.length < 10) return;
 
-    const validStarts = ['graph', 'flowchart', 'sequencediagram', 'classdiagram', 'statediagram', 'erdiagram', 'gantt', 'pie', 'gitgraph', 'mindmap', 'timeline', 'sankey', 'block'];
+    if (sanitized === prevCodeRef.current) return;
+    prevCodeRef.current = sanitized;
+
+    const validStarts = ['graph', 'flowchart', 'sequencediagram', 'classdiagram', 'statediagram', 'erdiagram', 'gantt', 'pie', 'gitgraph', 'mindmap', 'timeline', 'sankey', 'block', 'architecture'];
     const firstWord = sanitized.split(/[\s\n]/)[0].toLowerCase().replace(/-/g, '');
     const looksValid = validStarts.some(v => firstWord.startsWith(v));
 
@@ -149,14 +160,8 @@ export function MermaidDiagram({ code }: { code: string }) {
     const newId = `mermaid-${Date.now()}-${mermaidCounter++}`;
     initMermaid();
 
-    // Timeout fallback — show code if render takes too long
-    const fallbackTimer = setTimeout(() => {
-      if (!cancelled && !svg) setError('Render timeout — showing source');
-    }, 6000);
-
     async function render() {
       try {
-        // Clean up any leftover mermaid error DOM nodes
         document.querySelectorAll('[id^="dmermaid-"]').forEach(el => el.remove());
         document.querySelectorAll('.mermaid-error').forEach(el => el.remove());
 
@@ -166,7 +171,6 @@ export function MermaidDiagram({ code }: { code: string }) {
           setError(null);
         }
       } catch (err) {
-        // Clean up mermaid's injected error elements
         document.querySelectorAll(`#${CSS.escape(newId)}`).forEach(el => el.remove());
         document.querySelectorAll('[id^="dmermaid-"]').forEach(el => el.remove());
 
@@ -178,9 +182,18 @@ export function MermaidDiagram({ code }: { code: string }) {
       }
     }
 
-    const renderDelay = setTimeout(render, 400);
-    return () => { cancelled = true; clearTimeout(renderDelay); clearTimeout(fallbackTimer); };
-  }, [code, svg]);
+    render();
+    return () => { cancelled = true; };
+  }, [debouncedCode]); // Only trigger render when the debounced code updates
+
+  // 6-second absolute timeout that is NOT cleared on every keystroke
+  useEffect(() => {
+    if (svg || error) return;
+    const timer = setTimeout(() => {
+      if (!svg && !error) setError('timeout');
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [svg, error]);
 
   const sanitized = sanitizeMermaidCode(code);
 
@@ -193,12 +206,12 @@ export function MermaidDiagram({ code }: { code: string }) {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
             </svg>
-            <span>Diagram Source</span>
-          </div>
-          <span className="text-gray-500">mermaid</span>
-        </div>
-        <pre className="p-4 text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed">{sanitized}</pre>
+          <span>{error === 'timeout' ? 'Diagram Generation in Progress (Source)' : 'Diagram Source'}</span>
       </div>
+      <span className="text-gray-500">mermaid</span>
+    </div>
+    <pre className="p-4 text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed">{sanitized}</pre>
+  </div>
     );
   }
 

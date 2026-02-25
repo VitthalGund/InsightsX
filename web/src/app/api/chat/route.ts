@@ -42,7 +42,6 @@ COLUMNS:
 
 TOTAL ROWS: ~50,000 UPI transactions from 2024
 `;
-
 // ─── Tool Definitions ───────────────────────────────────────────────
 const tools = {
     analyze_transaction_status: {
@@ -148,14 +147,16 @@ ${DATA_SCHEMA}
 - Example: "Based on the earlier analysis showing 95% success rates in Maharashtra..."
 
 ### 3. Architectural & Flow Diagrams
-When discussing systems, processes, flows, or architecture, use **mermaid** code blocks:
+When discussing systems, processes, flows, or architecture, use **mermaid** code blocks.
+CRITICAL: ONLY use standard mermaid syntax. NEVER use ascii art, ASCII lines like \`|\` or \`*\`, or invalid operators like \`>>>\`. Use \`-->\` for connections.
 
+Example of VALID syntax:
 \`\`\`mermaid
 graph TD
-    A[User Query] --> B[LLM Router]
-    B --> C[Tool Selection]
-    C --> D[DuckDB Query]
-    D --> E[Visualization]
+    A[User Query] -->|"Sends to"| B[LLM Router]
+    B -->|Routes| C{Tool Selection}
+    C -->|"Data Question"| D[DuckDB Query]
+    C -->|"Flow Question"| E[Mermaid Diagram]
 \`\`\`
 
 Supported mermaid diagram types:
@@ -286,7 +287,7 @@ async function handleOllama(messages: Awaited<ReturnType<typeof convertToModelMe
 
     // Make the actual request
     try {
-        const ollama = createOllama({ baseURL: OLLAMA_BASE_URL });
+        const ollama = createOllama({ baseURL: `${OLLAMA_BASE_URL}/api` });
         const result = streamText({
             model: ollama(OLLAMA_MODEL),
             system: SYSTEM_PROMPT,
