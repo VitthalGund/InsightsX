@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import mermaid from 'mermaid';
 
 let initialized = false;
@@ -20,78 +20,156 @@ function initMermaid() {
       secondaryColor: '#f0fdf4',
       tertiaryColor: '#fefce8',
       fontFamily: 'Inter, system-ui, sans-serif',
-      fontSize: '13px',
+      fontSize: '14px',
     },
     flowchart: { curve: 'basis', padding: 15 },
-    sequence: { mirrorActors: false },
+    sequence: { mirrorActors: false, width: 180, height: 50 },
     securityLevel: 'loose',
   });
 }
 
 function sanitizeMermaidCode(raw: string): string {
   let code = raw.trim();
-  
-  // Remove markdown fences if the LLM accidentally includes them
   code = code.replace(/^```mermaid\s*/i, '').replace(/^```\s*/gm, '').replace(/```\s*$/gm, '');
-  
-  // Remove HTML tags that can break mermaid
   code = code.replace(/<br\s*\/?>/gi, '\n');
   code = code.replace(/<[^>]+>/g, '');
-  
-  // Fix common LLM mistakes
-  // Replace smart quotes with regular quotes
-  code = code.replace(/[""]/g, '"').replace(/['']/g, "'");
-  
-  // Fix parentheses in node labels — wrap in quotes if they contain special chars
-  // e.g., A(Payment Service Provider) → A["Payment Service Provider"]
-  code = code.replace(/(\w+)\(([^)]*[&/<>][^)]*)\)/g, '$1["$2"]');
-  
-  // Remove empty lines between graph declarations and nodes
+  code = code.replace(/[\u201C\u201D]/g, '"').replace(/[\u2018\u2019]/g, "'");
   code = code.replace(/\n{3,}/g, '\n\n');
-  
   return code.trim();
 }
 
+/**
+ * Only strip width/height from the ROOT <svg> element.
+ * Do NOT touch child elements like <rect>, <text>, etc.
+ */
+function makeSvgResponsive(svgHtml: string): string {
+  // Match only the opening <svg tag (first occurrence)
+  const svgOpenTagMatch = svgHtml.match(/^(<svg\s[^>]*>)/);
+  if (!svgOpenTagMatch) return svgHtml;
+
+  let rootTag = svgOpenTagMatch[1];
+  const rest = svgHtml.slice(rootTag.length);
+
+  // Strip width/height/style from root SVG only
+  rootTag = rootTag.replace(/\s+width="[^"]*"/, '');
+  rootTag = rootTag.replace(/\s+height="[^"]*"/, '');
+  rootTag = rootTag.replace(/\s+style="[^"]*"/, '');
+
+  // Add responsive style
+  rootTag = rootTag.replace('<svg ', '<svg style="width:100%;height:auto;" ');
+
+  return rootTag + rest;
+}
+
+// ─── Fullscreen Modal ───────────────────────────────────────────────
+function FullscreenModal({ svg, code, onClose }: { svg: string; code: string; onClose: () => void }) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handler);
+    return () => {
+      window.removeEventListener('keydown', handler);
+      document.body.style.overflow = '';
+    };
+  }, [onClose]);
+
+  const responsiveSvg = makeSvgResponsive(svg);
+
+  return (
+    <div
+      className="fixed inset-0 z-9999 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative bg-white rounded-2xl shadow-2xl w-[92vw] h-[90vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-200 shrink-0">
+          <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+            </svg>
+            Diagram — Full View
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg bg-gray-100 hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+            title="Close (Esc)"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Scrollable diagram area */}
+        <div className="flex-1 overflow-auto p-8 bg-white min-h-0">
+          {responsiveSvg ? (
+            <div
+              dangerouslySetInnerHTML={{ __html: responsiveSvg }}
+              className="w-full min-h-[400px]"
+            />
+          ) : (
+            <pre className="text-sm text-gray-600 font-mono whitespace-pre-wrap p-4 bg-gray-50 rounded-lg">{code}</pre>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Mermaid Diagram Component ──────────────────────────────────────
 export function MermaidDiagram({ code }: { code: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [svg, setSvg] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
-  const idRef = useRef(`mermaid-${Date.now()}-${mermaidCounter++}`);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const prevCodeRef = useRef('');
+
+  const openFullscreen = useCallback(() => { if (svg) setIsFullscreen(true); }, [svg]);
+  const closeFullscreen = useCallback(() => setIsFullscreen(false), []);
 
   useEffect(() => {
     const sanitized = sanitizeMermaidCode(code);
-    
-    // Don't re-render if code hasn't meaningfully changed
     if (sanitized === prevCodeRef.current) return;
     prevCodeRef.current = sanitized;
-    
-    // Skip rendering incomplete diagrams (streaming)
     if (!sanitized || sanitized.length < 10) return;
-    
-    // Check it starts with a valid mermaid keyword
-    const validStarts = ['graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 'stateDiagram', 'erDiagram', 'gantt', 'pie', 'gitgraph', 'mindmap', 'timeline', 'sankey', 'block'];
-    const firstWord = sanitized.split(/[\s\n]/)[0].toLowerCase().replace('-', '');
-    const looksValid = validStarts.some(v => firstWord.startsWith(v.toLowerCase().replace('-', '')));
-    
+
+    const validStarts = ['graph', 'flowchart', 'sequencediagram', 'classdiagram', 'statediagram', 'erdiagram', 'gantt', 'pie', 'gitgraph', 'mindmap', 'timeline', 'sankey', 'block'];
+    const firstWord = sanitized.split(/[\s\n]/)[0].toLowerCase().replace(/-/g, '');
+    const looksValid = validStarts.some(v => firstWord.startsWith(v));
+
     if (!looksValid) {
-      setError('Invalid diagram syntax');
+      setError('Unrecognized diagram type');
       return;
     }
 
     let cancelled = false;
     const newId = `mermaid-${Date.now()}-${mermaidCounter++}`;
-
     initMermaid();
-    
+
+    // Timeout fallback — show code if render takes too long
+    const fallbackTimer = setTimeout(() => {
+      if (!cancelled && !svg) setError('Render timeout — showing source');
+    }, 6000);
+
     async function render() {
       try {
+        // Clean up any leftover mermaid error DOM nodes
+        document.querySelectorAll('[id^="dmermaid-"]').forEach(el => el.remove());
+        document.querySelectorAll('.mermaid-error').forEach(el => el.remove());
+
         const { svg: rendered } = await mermaid.render(newId, sanitized);
         if (!cancelled) {
           setSvg(rendered);
           setError(null);
         }
       } catch (err) {
+        // Clean up mermaid's injected error elements
+        document.querySelectorAll(`#${CSS.escape(newId)}`).forEach(el => el.remove());
+        document.querySelectorAll('[id^="dmermaid-"]').forEach(el => el.remove());
+
         if (!cancelled) {
           console.warn('Mermaid render error:', err);
           setError(String(err));
@@ -100,27 +178,31 @@ export function MermaidDiagram({ code }: { code: string }) {
       }
     }
 
-    // Debounce to avoid rendering during streaming
-    const timeout = setTimeout(render, 300);
-    return () => { cancelled = true; clearTimeout(timeout); };
-  }, [code]);
+    const renderDelay = setTimeout(render, 400);
+    return () => { cancelled = true; clearTimeout(renderDelay); clearTimeout(fallbackTimer); };
+  }, [code, svg]);
 
+  const sanitized = sanitizeMermaidCode(code);
+
+  // Error / timeout fallback — show raw code in styled box
   if (error) {
-    // Show the raw mermaid code in a styled fallback
-    const sanitized = sanitizeMermaidCode(code);
     return (
-      <div className="my-3 bg-gray-50 border border-gray-200 rounded-xl overflow-hidden">
-        <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 border-b border-gray-200 text-xs text-gray-500">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-          </svg>
-          Diagram (text fallback)
+      <div className="my-3 bg-gray-900 border border-gray-700 rounded-xl overflow-hidden text-white">
+        <div className="flex items-center justify-between px-3 py-2 bg-gray-800 border-b border-gray-700 text-xs text-gray-400">
+          <div className="flex items-center gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+            </svg>
+            <span>Diagram Source</span>
+          </div>
+          <span className="text-gray-500">mermaid</span>
         </div>
-        <pre className="p-3 text-xs text-gray-700 overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed">{sanitized}</pre>
+        <pre className="p-4 text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed">{sanitized}</pre>
       </div>
     );
   }
 
+  // Loading
   if (!svg) {
     return (
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 my-3 text-center text-gray-400 text-sm animate-pulse">
@@ -129,13 +211,38 @@ export function MermaidDiagram({ code }: { code: string }) {
     );
   }
 
+  // Rendered diagram
   return (
-    <div className="my-3 bg-white border border-gray-200 rounded-xl p-4 overflow-x-auto shadow-sm">
+    <>
       <div
-        ref={containerRef}
-        dangerouslySetInnerHTML={{ __html: svg }}
-        className="flex justify-center [&_svg]:max-w-full [&_svg]:h-auto"
-      />
-    </div>
+        className="my-3 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm cursor-pointer group hover:border-indigo-300 hover:shadow-md transition-all"
+        onClick={openFullscreen}
+      >
+        <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50 border-b border-gray-200 text-xs text-gray-500">
+          <div className="flex items-center gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+            </svg>
+            <span className="font-medium">Diagram</span>
+          </div>
+          <div className="flex items-center gap-1 text-gray-400 group-hover:text-indigo-500 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+            </svg>
+            <span>Click to expand</span>
+          </div>
+        </div>
+
+        <div className="p-4 overflow-hidden">
+          <div
+            ref={containerRef}
+            dangerouslySetInnerHTML={{ __html: svg }}
+            className="flex justify-center [&_svg]:max-w-full [&_svg]:h-auto [&_svg]:max-h-64"
+          />
+        </div>
+      </div>
+
+      {isFullscreen && <FullscreenModal svg={svg} code={sanitized} onClose={closeFullscreen} />}
+    </>
   );
 }

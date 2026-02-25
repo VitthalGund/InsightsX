@@ -210,18 +210,33 @@ Structure responses with:
 
 // ─── Request Handler ────────────────────────────────────────────────
 export async function POST(req: Request) {
-    const { messages: uiMessages }: { messages: UIMessage[] } = await req.json();
-    const messages = await convertToModelMessages(uiMessages);
+    try {
+        const { messages: uiMessages }: { messages: UIMessage[] } = await req.json();
+        const messages = await convertToModelMessages(uiMessages);
 
-    if (LLM_PROVIDER === 'ollama') {
-        return handleOllama(messages);
+        console.log(`[chat] Provider: ${LLM_PROVIDER}, Messages: ${uiMessages.length}`);
+
+        if (LLM_PROVIDER === 'ollama') {
+            // Try Ollama first, auto-fallback to Gemini on failure
+            const ollamaResult = await handleOllama(messages);
+            if (ollamaResult) return ollamaResult;
+
+            console.warn('[chat] Ollama failed, falling back to Gemini');
+            return handleGemini(messages);
+        }
+        return handleGemini(messages);
+    } catch (err) {
+        console.error('[chat] Request handler error:', err);
+        return new Response(
+            JSON.stringify({ error: 'Request processing failed', detail: String(err) }),
+            { status: 500, headers: { 'Content-Type': 'application/json' } }
+        );
     }
-    return handleGemini(messages);
 }
 
 async function handleGemini(messages: Awaited<ReturnType<typeof convertToModelMessages>>) {
     let lastError: Error | null = null;
-    for (let attempt = 0; attempt < GEMINI_API_KEYS.length; attempt++) {
+    for (let attempt = 0; attempt < Math.max(GEMINI_API_KEYS.length, 1); attempt++) {
         const apiKey = getNextGeminiKey();
         try {
             const google = createGoogleGenerativeAI({ apiKey });
@@ -243,7 +258,33 @@ async function handleGemini(messages: Awaited<ReturnType<typeof convertToModelMe
     );
 }
 
-async function handleOllama(messages: Awaited<ReturnType<typeof convertToModelMessages>>) {
+async function handleOllama(messages: Awaited<ReturnType<typeof convertToModelMessages>>): Promise<Response | null> {
+    // Health check: verify Ollama is running
+    try {
+        const healthCheck = await fetch(`${OLLAMA_BASE_URL}/api/tags`, {
+            signal: AbortSignal.timeout(3000),
+        });
+        if (!healthCheck.ok) {
+            console.warn(`[ollama] Health check failed: ${healthCheck.status}`);
+            return null;
+        }
+        const tags = await healthCheck.json();
+        const models = (tags.models || []).map((m: { name: string }) => m.name);
+        console.log(`[ollama] Available models: ${models.join(', ')}`);
+
+        // Check if requested model is available
+        const modelBase = OLLAMA_MODEL.split(':')[0];
+        const hasModel = models.some((m: string) => m.startsWith(modelBase));
+        if (!hasModel) {
+            console.warn(`[ollama] Model "${OLLAMA_MODEL}" not found. Available: ${models.join(', ')}`);
+            return null;
+        }
+    } catch (err) {
+        console.warn(`[ollama] Server not reachable at ${OLLAMA_BASE_URL}:`, err);
+        return null;
+    }
+
+    // Make the actual request
     try {
         const ollama = createOllama({ baseURL: OLLAMA_BASE_URL });
         const result = streamText({
@@ -255,9 +296,8 @@ async function handleOllama(messages: Awaited<ReturnType<typeof convertToModelMe
         return result.toUIMessageStreamResponse();
     } catch (err: unknown) {
         const error = err instanceof Error ? err : new Error(String(err));
-        return new Response(
-            JSON.stringify({ error: 'Ollama request failed', detail: error.message }),
-            { status: 503, headers: { 'Content-Type': 'application/json' } }
-        );
+        console.error(`[ollama] Stream error: ${error.message}`);
+        return null; // Return null to trigger Gemini fallback
     }
 }
+
