@@ -1,13 +1,14 @@
 'use client';
 
 import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from 'ai';
 import { useDuckDB } from '@/hooks/useDuckDB';
-import { GenerativeInsightCard } from '@/components/GenerativeInsightCard';
+import { GenerativeInsightCard, type ChartType } from '@/components/GenerativeInsightCard';
 import { Send, Loader2, Database, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 
 interface ChartProps {
-  type: 'bar' | 'pie';
+  type: ChartType;
   x: string;
   y: string;
   narrative: string;
@@ -17,30 +18,37 @@ interface ToolData extends ChartProps {
   data: Record<string, unknown>[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyToolCall = { toolName: string; toolCallId: string; input: Record<string, unknown>; [key: string]: any };
-
 export default function ChatDashboard() {
   const { db, loading: dbLoading, error: dbError } = useDuckDB();
   const [toolDataStore, setToolDataStore] = useState<Record<string, ToolData>>({});
   
   const [input, setInput] = useState('');
-  const { messages, sendMessage, status } = useChat({
+  const { messages, sendMessage, addToolOutput, status } = useChat({
+    transport: new DefaultChatTransport({ api: '/api/chat' }),
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+    
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async onToolCall({ toolCall }: { toolCall: any }) {
       if (!db) return;
-      const tc = toolCall as AnyToolCall;
-      const c = await db.connect();
-      console.log('Intercepted Tool Call:', tc);
       
+      // Check if it's a dynamic tool first (per docs)
+      if (toolCall.dynamic) return;
+
+      const toolName = toolCall.toolName as string;
+      const toolCallId = toolCall.toolCallId as string;
+      const args = (toolCall.input ?? {}) as Record<string, unknown>;
+
+      console.log('Intercepted Tool Call:', toolName, args);
+
+      const c = await db.connect();
       try {
         let query = '';
         let chartProps: ChartProps = { type: 'bar', x: 'name', y: 'value', narrative: '' };
         
-        switch (tc.toolName) {
+        switch (toolName) {
           case 'analyze_transaction_status': {
-            const age_group = tc.input.age_group as string;
-            const state = tc.input.state as string;
+            const age_group = String(args.age_group ?? '');
+            const state = String(args.state ?? '');
             query = `
               SELECT transaction_status as name, CAST(COUNT(*) AS INTEGER) as value 
               FROM transactions 
@@ -49,14 +57,14 @@ export default function ChatDashboard() {
             `;
             chartProps = {
               type: 'pie', x: 'name', y: 'value',
-              narrative: `There is a significant distribution of statuses for the ${age_group} demographic in ${state}.`
+              narrative: `Distribution of transaction statuses for the ${age_group} demographic in ${state}.`
             };
             break;
           }
             
           case 'compare_network_failures': {
-            const primary_network = tc.input.primary_network as string;
-            const secondary_network = tc.input.secondary_network as string;
+            const primary_network = String(args.primary_network ?? '');
+            const secondary_network = String(args.secondary_network ?? '');
             query = `
               SELECT network_type as name, CAST(COUNT(*) AS INTEGER) as value
               FROM transactions
@@ -72,9 +80,9 @@ export default function ChatDashboard() {
           }
             
           case 'average_transaction_value': {
-            const category = tc.input.category as string;
-            const start_hour = tc.input.start_hour as number;
-            const end_hour = tc.input.end_hour as number;
+            const category = String(args.category ?? '');
+            const start_hour = Number(args.start_hour ?? 0);
+            const end_hour = Number(args.end_hour ?? 23);
             query = `
               SELECT CAST(hour_of_day AS VARCHAR) as name, CAST(AVG(amount_inr) AS INTEGER) as value
               FROM transactions
@@ -91,7 +99,7 @@ export default function ChatDashboard() {
           }
             
           case 'merchant_risk_analysis': {
-            const limit = (tc.input.limit as number) || 5;
+            const limit = Number(args.limit) || 5;
             query = `
               SELECT merchant_category as name, CAST(COUNT(*) AS INTEGER) as value
               FROM transactions
@@ -118,8 +126,15 @@ export default function ChatDashboard() {
            
            setToolDataStore(prev => ({
              ...prev,
-             [tc.toolCallId]: { data: rows, ...chartProps }
+             [toolCallId]: { data: rows, ...chartProps }
            }));
+
+           // Provide tool output back to the chat (no await per docs)
+           addToolOutput({
+             tool: toolName,
+             toolCallId,
+             output: JSON.stringify({ rows, chartProps }),
+           });
         }
 
       } catch (e) {
