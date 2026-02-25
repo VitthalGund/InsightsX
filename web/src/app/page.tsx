@@ -4,8 +4,10 @@ import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from 'ai';
 import { useDuckDB } from '@/hooks/useDuckDB';
 import { GenerativeInsightCard, type ChartType } from '@/components/GenerativeInsightCard';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Send, Loader2, Database, AlertCircle } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 interface ChartProps {
   type: ChartType;
@@ -21,124 +23,140 @@ interface ToolData extends ChartProps {
 export default function ChatDashboard() {
   const { db, loading: dbLoading, error: dbError } = useDuckDB();
   const [toolDataStore, setToolDataStore] = useState<Record<string, ToolData>>({});
-  
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
   const [input, setInput] = useState('');
   const { messages, sendMessage, addToolOutput, status } = useChat({
     transport: new DefaultChatTransport({ api: '/api/chat' }),
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
-    
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async onToolCall({ toolCall }: { toolCall: any }) {
       if (!db) return;
-      
-      // Check if it's a dynamic tool first (per docs)
       if (toolCall.dynamic) return;
 
       const toolName = toolCall.toolName as string;
       const toolCallId = toolCall.toolCallId as string;
       const args = (toolCall.input ?? {}) as Record<string, unknown>;
 
-      console.log('Intercepted Tool Call:', toolName, args);
+      console.log('Tool Call:', toolName, args);
 
       const c = await db.connect();
       try {
         let query = '';
         let chartProps: ChartProps = { type: 'bar', x: 'name', y: 'value', narrative: '' };
-        
+
         switch (toolName) {
+          // ─── Original 4 tools ───────────────────────────────
           case 'analyze_transaction_status': {
-            const age_group = String(args.age_group ?? '');
+            const ageGroup = String(args.age_group ?? '');
             const state = String(args.state ?? '');
-            query = `
-              SELECT transaction_status as name, CAST(COUNT(*) AS INTEGER) as value 
-              FROM transactions 
-              WHERE sender_age_group = '${age_group}' AND sender_state = '${state}'
-              GROUP BY transaction_status
-            `;
-            chartProps = {
-              type: 'pie', x: 'name', y: 'value',
-              narrative: `Distribution of transaction statuses for the ${age_group} demographic in ${state}.`
-            };
+            query = `SELECT transaction_status as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE sender_age_group='${ageGroup}' AND sender_state='${state}' GROUP BY transaction_status`;
+            chartProps = { type: 'pie', x: 'name', y: 'value', narrative: `Transaction status distribution for ${ageGroup} demographic in ${state}.` };
             break;
           }
-            
           case 'compare_network_failures': {
-            const primary_network = String(args.primary_network ?? '');
-            const secondary_network = String(args.secondary_network ?? '');
-            query = `
-              SELECT network_type as name, CAST(COUNT(*) AS INTEGER) as value
-              FROM transactions
-              WHERE network_type IN ('${primary_network}', '${secondary_network}')
-                AND transaction_status = 'FAILED'
-              GROUP BY network_type
-            `;
-            chartProps = {
-              type: 'bar', x: 'name', y: 'value',
-              narrative: `Comparing technical drop-offs between ${primary_network} and ${secondary_network}.`
-            };
+            const pn = String(args.primary_network ?? '');
+            const sn = String(args.secondary_network ?? '');
+            query = `SELECT network_type as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE network_type IN ('${pn}','${sn}') AND transaction_status='FAILED' GROUP BY network_type`;
+            chartProps = { type: 'bar', x: 'name', y: 'value', narrative: `Failure comparison between ${pn} and ${sn} networks.` };
             break;
           }
-            
           case 'average_transaction_value': {
-            const category = String(args.category ?? '');
-            const start_hour = Number(args.start_hour ?? 0);
-            const end_hour = Number(args.end_hour ?? 23);
-            query = `
-              SELECT CAST(hour_of_day AS VARCHAR) as name, CAST(AVG(amount_inr) AS INTEGER) as value
-              FROM transactions
-              WHERE merchant_category = '${category}' 
-                AND hour_of_day BETWEEN ${start_hour} AND ${end_hour}
-              GROUP BY hour_of_day
-              ORDER BY hour_of_day ASC
-            `;
-            chartProps = {
-              type: 'bar', x: 'name', y: 'value',
-              narrative: `Average transaction amounts for ${category} purchases between ${start_hour}:00 and ${end_hour}:00.`
-            };
+            const cat = String(args.category ?? '');
+            const sh = Number(args.start_hour ?? 0);
+            const eh = Number(args.end_hour ?? 23);
+            query = `SELECT CAST(hour_of_day AS VARCHAR) as name, CAST(AVG(amount_inr) AS INTEGER) as value FROM transactions WHERE merchant_category='${cat}' AND hour_of_day BETWEEN ${sh} AND ${eh} GROUP BY hour_of_day ORDER BY hour_of_day`;
+            chartProps = { type: 'line', x: 'name', y: 'value', narrative: `Average ₹ for ${cat} between ${sh}:00 and ${eh}:00.` };
             break;
           }
-            
           case 'merchant_risk_analysis': {
-            const limit = Number(args.limit) || 5;
-            query = `
-              SELECT merchant_category as name, CAST(COUNT(*) AS INTEGER) as value
-              FROM transactions
-              WHERE fraud_flag = 1
-              GROUP BY merchant_category
-              ORDER BY value DESC
-              LIMIT ${limit}
-            `;
-            chartProps = {
-              type: 'bar', x: 'name', y: 'value',
-              narrative: `Top ${limit} categories historically flagged for potentially anomalous transactions.`
-            };
+            const lim = Number(args.limit) || 5;
+            query = `SELECT merchant_category as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE fraud_flag=1 GROUP BY merchant_category ORDER BY value DESC LIMIT ${lim}`;
+            chartProps = { type: 'bar', x: 'name', y: 'value', narrative: `Top ${lim} categories flagged for anomalous transactions.` };
+            break;
+          }
+
+          // ─── New tools ──────────────────────────────────────
+          case 'hourly_volume_trend': {
+            const stateF = args.state ? `AND sender_state='${args.state}'` : '';
+            const catF = args.category ? `AND merchant_category='${args.category}'` : '';
+            query = `SELECT CAST(hour_of_day AS VARCHAR) as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE 1=1 ${stateF} ${catF} GROUP BY hour_of_day ORDER BY hour_of_day`;
+            chartProps = { type: 'area', x: 'name', y: 'value', narrative: `Hourly transaction volume trend${args.state ? ` in ${args.state}` : ''}${args.category ? ` for ${args.category}` : ''}.` };
+            break;
+          }
+          case 'daily_pattern_analysis': {
+            const sf = args.status_filter === 'ALL' ? '' : `AND transaction_status='${args.status_filter}'`;
+            query = `SELECT day_of_week as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE 1=1 ${sf} GROUP BY day_of_week ORDER BY CASE day_of_week WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3 WHEN 'Thursday' THEN 4 WHEN 'Friday' THEN 5 WHEN 'Saturday' THEN 6 WHEN 'Sunday' THEN 7 END`;
+            chartProps = { type: 'radar', x: 'name', y: 'value', narrative: `Weekly transaction pattern${args.status_filter !== 'ALL' ? ` (${args.status_filter} only)` : ''}.` };
+            break;
+          }
+          case 'bank_performance': {
+            const bankLim = Number(args.limit) || 10;
+            query = `SELECT sender_bank as name, CAST(SUM(CASE WHEN transaction_status='SUCCESS' THEN 1 ELSE 0 END) AS INTEGER) as value, CAST(SUM(CASE WHEN transaction_status='FAILED' THEN 1 ELSE 0 END) AS INTEGER) as failed FROM transactions GROUP BY sender_bank ORDER BY (value+failed) DESC LIMIT ${bankLim}`;
+            chartProps = { type: 'bar', x: 'name', y: 'value', narrative: `Top ${bankLim} banks by transaction volume (success count shown).` };
+            break;
+          }
+          case 'geographic_distribution': {
+            const geoSf = args.status_filter === 'ALL' ? '' : `AND transaction_status='${args.status_filter}'`;
+            const geoLim = Number(args.limit) || 10;
+            query = `SELECT sender_state as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE 1=1 ${geoSf} GROUP BY sender_state ORDER BY value DESC LIMIT ${geoLim}`;
+            chartProps = { type: 'bar', x: 'name', y: 'value', narrative: `Geographic distribution of UPI transactions across top ${geoLim} states.` };
+            break;
+          }
+          case 'device_type_breakdown': {
+            const devState = args.state ? `AND sender_state='${args.state}'` : '';
+            query = `SELECT device_type as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE 1=1 ${devState} GROUP BY device_type ORDER BY value DESC`;
+            chartProps = { type: 'pie', x: 'name', y: 'value', narrative: `Device type distribution${args.state ? ` in ${args.state}` : ''}.` };
+            break;
+          }
+          case 'revenue_by_category': {
+            const ageF = args.age_group === 'ALL' ? '' : `AND sender_age_group='${args.age_group}'`;
+            query = `SELECT merchant_category as name, CAST(SUM(amount_inr) AS INTEGER) as value FROM transactions WHERE 1=1 ${ageF} GROUP BY merchant_category ORDER BY value DESC`;
+            chartProps = { type: 'composed', x: 'name', y: 'value', narrative: `Total revenue (₹) per merchant category${args.age_group !== 'ALL' ? ` for ${args.age_group} age group` : ''}.` };
+            break;
+          }
+          case 'transaction_type_split': {
+            const txState = args.state ? `AND sender_state='${args.state}'` : '';
+            query = `SELECT transaction_type as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE 1=1 ${txState} GROUP BY transaction_type ORDER BY value DESC`;
+            chartProps = { type: 'pie', x: 'name', y: 'value', narrative: `Transaction type distribution (P2P, P2M, etc.)${args.state ? ` in ${args.state}` : ''}.` };
+            break;
+          }
+          case 'peak_usage_analysis': {
+            const pkCat = args.category ? `AND merchant_category='${args.category}'` : '';
+            const pkState = args.state ? `AND sender_state='${args.state}'` : '';
+            query = `SELECT CAST(hour_of_day AS VARCHAR) as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE 1=1 ${pkCat} ${pkState} GROUP BY hour_of_day ORDER BY value DESC LIMIT 10`;
+            chartProps = { type: 'area', x: 'name', y: 'value', narrative: `Peak usage hours${args.category ? ` for ${args.category}` : ''}${args.state ? ` in ${args.state}` : ''}.` };
             break;
           }
         }
 
         if (query) {
-           console.log("Executing strict deterministic query:", query);
-           const result = await c.query(query);
-           const rows = result.toArray().map(r => {
-             const entries = r as Iterable<[string, unknown]>;
-             return Object.fromEntries(entries);
-           });
-           
-           setToolDataStore(prev => ({
-             ...prev,
-             [toolCallId]: { data: rows, ...chartProps }
-           }));
+          console.log('Query:', query);
+          const result = await c.query(query);
+          const rows = result.toArray().map(r => {
+            const entries = r as Iterable<[string, unknown]>;
+            return Object.fromEntries(entries);
+          });
 
-           // Provide tool output back to the chat (no await per docs)
-           addToolOutput({
-             tool: toolName,
-             toolCallId,
-             output: JSON.stringify({ rows, chartProps }),
-           });
+          setToolDataStore(prev => ({
+            ...prev,
+            [toolCallId]: { data: rows, ...chartProps }
+          }));
+
+          addToolOutput({
+            tool: toolName,
+            toolCallId,
+            output: JSON.stringify({ rowCount: rows.length, chartType: chartProps.type, narrative: chartProps.narrative }),
+          });
         }
-
       } catch (e) {
-        console.error("DuckDB Query Exec Error:", e);
+        console.error('DuckDB Error:', e);
+        addToolOutput({
+          tool: toolName,
+          toolCallId,
+          output: JSON.stringify({ error: String(e) }),
+        });
       } finally {
         await c.close();
       }
@@ -146,6 +164,11 @@ export default function ChatDashboard() {
   });
 
   const isLoading = status === 'submitted' || status === 'streaming';
+
+  // Auto-scroll on new messages
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading]);
 
   const onSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -167,178 +190,198 @@ export default function ChatDashboard() {
   if (dbError) {
     return (
       <div className="min-h-screen p-8 flex items-center justify-center bg-red-50 font-sans">
-         <div className="bg-white p-6 rounded-xl shadow-sm border border-red-100 max-w-lg text-center">
-            <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-4" />
-            <h1 className="text-xl font-bold text-red-900 mb-2">Engine Initialization Failed</h1>
-            <p className="text-red-700">{dbError}</p>
-         </div>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-red-100 max-w-lg text-center">
+          <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-4" />
+          <h1 className="text-xl font-bold text-red-900 mb-2">Engine Initialization Failed</h1>
+          <p className="text-red-700">{dbError}</p>
+        </div>
       </div>
     );
   }
 
+  const EXAMPLES = [
+    'Show me the distribution of transaction statuses for the 18-25 age group in Maharashtra',
+    'Compare technical failure rates on 4G vs 5G networks',
+    'What merchant categories have the highest fraud flags?',
+    'Show me the hourly transaction volume trend',
+    'Which states have the most UPI transactions?',
+    'What is the device type breakdown across users?',
+    'Show me revenue by merchant category',
+    'What does the weekly transaction pattern look like?',
+    'Which banks have the best success rates?',
+    'Give me a business overview of the UPI data',
+  ];
+
   return (
     <div className="flex h-screen bg-gray-50 font-sans">
-      {/* Sidebar Panel */}
+      {/* Sidebar */}
       <div className="w-80 bg-white border-r border-gray-200 shadow-sm flex flex-col">
         <div className="p-6 border-b border-gray-100">
-           <div className="flex items-center gap-2 text-indigo-600 mb-2">
-              <Database className="h-5 w-5" />
-              <h1 className="text-lg font-bold tracking-tight">InsightsX OLAP</h1>
-           </div>
-           <p className="text-sm text-gray-500 leading-tight">Zero-latency In-Browser Query Engine using DuckDB-WASM x Gemini.</p>
+          <div className="flex items-center gap-2 text-indigo-600 mb-2">
+            <Database className="h-5 w-5" />
+            <h1 className="text-lg font-bold tracking-tight">InsightsX OLAP</h1>
+          </div>
+          <p className="text-sm text-gray-500 leading-tight">Zero-latency In-Browser Analytics using DuckDB-WASM × AI.</p>
         </div>
         <div className="p-6 flex-1 overflow-y-auto">
-           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Architecture</h3>
-           <ul className="space-y-3 text-sm text-gray-600">
-             <li className="flex items-start gap-2">
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Architecture</h3>
+          <ul className="space-y-3 text-sm text-gray-600">
+            {['DuckDB Worker: Active', 'LLM Router: Operational', 'Parquet Source: Loaded'].map(s => (
+              <li key={s} className="flex items-start gap-2">
                 <div className="mt-0.5 rounded-full bg-green-100 p-1"><div className="h-1.5 w-1.5 rounded-full bg-green-500" /></div>
-                DuckDB Worker: Active
-             </li>
-             <li className="flex items-start gap-2">
-                <div className="mt-0.5 rounded-full bg-green-100 p-1"><div className="h-1.5 w-1.5 rounded-full bg-green-500" /></div>
-                LLM Router: Operational
-             </li>
-             <li className="flex items-start gap-2">
-                <div className="mt-0.5 rounded-full bg-green-100 p-1"><div className="h-1.5 w-1.5 rounded-full bg-green-500" /></div>
-                Parquet Source: Loaded
-             </li>
-           </ul>
-           
-           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-8 mb-4">Query Examples</h3>
-           <div className="space-y-2">
-             <button onClick={() => sendMessage({ text: "Show me the distribution of transaction statuses for the 18-25 age group in Maharashtra" })} className="text-left w-full text-xs p-2.5 rounded-lg border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-gray-600">
-                Show me the distribution of transaction statuses for the 18-25 age group in Maharashtra
-             </button>
-             <button onClick={() => sendMessage({ text: "Compare the technical failure rates of transactions initiated on 4G vs 5G." })} className="text-left w-full text-xs p-2.5 rounded-lg border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-gray-600">
-                Compare technical failure rates on 4G vs 5G networks.
-             </button>
-              <button onClick={() => sendMessage({ text: "Find which merchant category has the highest ratio of fraud-flagged transactions." })} className="text-left w-full text-xs p-2.5 rounded-lg border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-gray-600">
-                What merchant categories have the highest fraud flags?
-             </button>
-           </div>
+                {s}
+              </li>
+            ))}
+          </ul>
+
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-8 mb-4">Query Examples</h3>
+          <div className="space-y-2">
+            {EXAMPLES.map((q) => (
+              <button
+                key={q}
+                onClick={() => sendMessage({ text: q })}
+                className="text-left w-full text-xs p-2.5 rounded-lg border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-gray-600"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Main Chat Area */}
+      {/* Main Chat */}
       <div className="flex-1 flex flex-col min-w-0 bg-white">
         <div className="flex-1 overflow-y-auto px-8 w-full max-w-4xl mx-auto py-8">
-           {messages.length === 0 && (
-              <div className="h-full flex flex-col items-center justify-center text-gray-400 space-y-4">
-                 <div className="h-16 w-16 bg-linear-to-tr from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 rotate-3">
-                    <Database className="h-8 w-8 text-white -rotate-3" />
-                 </div>
-                 <h2 className="text-2xl font-bold text-gray-800">Deterministic AI Explorer</h2>
-                 <p className="text-center max-w-md">
-                   Ask analytical questions in natural language. The LLM translates intent to strict Zod parameters, executing lightning fast SQL locally.
-                 </p>
+          {messages.length === 0 && (
+            <div className="h-full flex flex-col items-center justify-center text-gray-400 space-y-4">
+              <div className="h-16 w-16 bg-linear-to-tr from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 rotate-3">
+                <Database className="h-8 w-8 text-white -rotate-3" />
               </div>
-           )}
+              <h2 className="text-2xl font-bold text-gray-800">InsightsX Analytics</h2>
+              <p className="text-center max-w-md">
+                Ask anything about UPI transaction data. Get visualizations, business insights, and strategic analysis — all processed locally in your browser.
+              </p>
+            </div>
+          )}
 
-           {messages.map((m) => {
-             // Extract text parts from the v6 parts array
-             const textContent = m.parts
-               ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
-               .map(p => p.text)
-               .join('\n');
+          {messages.map((m) => {
+            const textContent = m.parts
+              ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+              .map(p => p.text)
+              .join('\n');
 
-             // Tool parts in v6 have type 'tool-<name>' or 'dynamic-tool' with props directly on the part
-             const toolParts = m.parts?.filter(p =>
-               (p.type.startsWith('tool-') || p.type === 'dynamic-tool') && 'toolCallId' in p
-             ) ?? [];
+            const toolParts = m.parts?.filter(p =>
+              (p.type.startsWith('tool-') || p.type === 'dynamic-tool') && 'toolCallId' in p
+            ) ?? [];
 
-             return (
+            return (
               <div key={m.id} className={`mb-8 flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`flex gap-4 max-w-[85%] ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                   
-                   {/* Avatar */}
-                   <div className={`shrink-0 flex items-center justify-center h-8 w-8 rounded-full ${m.role === 'user' ? 'bg-gray-100 text-gray-500' : 'bg-indigo-100 text-indigo-600'}`}>
-                     {m.role === 'user' ? 'U' : <Database className="h-4 w-4" />}
-                   </div>
+                  {/* Avatar */}
+                  <div className={`shrink-0 flex items-center justify-center h-8 w-8 rounded-full ${m.role === 'user' ? 'bg-gray-100 text-gray-500' : 'bg-indigo-100 text-indigo-600'}`}>
+                    {m.role === 'user' ? 'U' : <Database className="h-4 w-4" />}
+                  </div>
 
-                   {/* Message Content */}
-                   <div className="flex-1 space-y-2 min-w-0">
-                     {textContent && (
-                       <div className={`p-4 rounded-2xl text-[15px] leading-relaxed shadow-sm border ${
-                          m.role === 'user' 
-                          ? 'bg-indigo-600 text-white rounded-tr-none border-transparent' 
+                  {/* Content */}
+                  <div className="flex-1 space-y-2 min-w-0">
+                    {textContent && (
+                      <div className={`p-4 rounded-2xl text-[15px] leading-relaxed shadow-sm border ${
+                        m.role === 'user'
+                          ? 'bg-indigo-600 text-white rounded-tr-none border-transparent'
                           : 'bg-white text-gray-800 rounded-tl-none border-gray-100'
-                       }`}>
-                         {textContent}
-                       </div>
-                     )}
+                      }`}>
+                        {m.role === 'user' ? (
+                          textContent
+                        ) : (
+                          <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-strong:text-gray-900 prose-a:text-indigo-600 prose-blockquote:border-indigo-300 prose-blockquote:text-gray-600 prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-indigo-700 prose-code:text-xs prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-th:bg-gray-50">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {textContent}
+                            </ReactMarkdown>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
-                     {toolParts.map((part) => {
-                       // In v6, tool properties (toolCallId, state, input, etc.) are directly on the part
-                       const inv = part as unknown as Record<string, unknown>;
-                       const toolCallId = inv.toolCallId as string;
-                       const resultData = toolDataStore[toolCallId];
+                    {toolParts.map((part) => {
+                      const inv = part as unknown as Record<string, unknown>;
+                      const toolCallId = inv.toolCallId as string;
+                      const resultData = toolDataStore[toolCallId];
+                      const toolName = ('toolName' in inv ? String(inv.toolName) : part.type.replace('tool-', ''));
 
-                       const toolName = ('toolName' in inv ? String(inv.toolName) : part.type.replace('tool-', ''));
-
-                       return (
-                         <div key={toolCallId} className="w-full animation-fade-in mt-4">
-                            {inv.state === 'input-streaming' || inv.state === 'partial-call' ? (
-                               <div className="flex items-center gap-2 p-3 bg-indigo-50/50 text-indigo-700 rounded-lg text-sm border border-indigo-100 w-fit">
-                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                 <span className="font-medium">Routing intent to localized DuckDB...</span>
-                                 <code className="text-xs bg-indigo-100/50 px-2 py-0.5 rounded opacity-70">
-                                   {toolName}(...)
-                                 </code>
-                               </div>
-                            ) : resultData ? (
-                               <GenerativeInsightCard
-                                 intent={`Interpreted Query: ${toolName.replace(/_/g, ' ')}`}
-                                 filters={Object.fromEntries(
-                                   Object.entries((inv.input as Record<string, unknown>) ?? {}).map(([k, v]) => [k, String(v)])
-                                 )}
-                                 data={resultData.data}
-                                 chartType={resultData.type}
-                                 dataKeyX={resultData.x}
-                                 dataKeyY={resultData.y}
-                                 narrative={resultData.narrative}
-                               />
-                            ) : null}
-                         </div>
-                       );
-                     })}
-                   </div>
+                      return (
+                        <div key={toolCallId} className="w-full mt-4">
+                          {inv.state === 'input-streaming' || inv.state === 'partial-call' ? (
+                            <div className="flex items-center gap-2 p-3 bg-indigo-50/50 text-indigo-700 rounded-lg text-sm border border-indigo-100 w-fit">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span className="font-medium">Querying local DuckDB...</span>
+                              <code className="text-xs bg-indigo-100/50 px-2 py-0.5 rounded opacity-70">
+                                {toolName}(...)
+                              </code>
+                            </div>
+                          ) : resultData ? (
+                            <GenerativeInsightCard
+                              intent={`${toolName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`}
+                              filters={Object.fromEntries(
+                                Object.entries((inv.input as Record<string, unknown>) ?? {})
+                                  .filter(([, v]) => v !== undefined && v !== null && v !== '')
+                                  .map(([k, v]) => [k.replace(/_/g, ' '), String(v)])
+                              )}
+                              data={resultData.data}
+                              chartType={resultData.type}
+                              dataKeyX={resultData.x}
+                              dataKeyY={resultData.y}
+                              narrative={resultData.narrative}
+                            />
+                          ) : (
+                            <div className="flex items-center gap-2 p-3 bg-amber-50 text-amber-700 rounded-lg text-sm border border-amber-100 w-fit">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>Processing {toolName}...</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-             );
-           })}
-           {isLoading && messages[messages.length-1]?.role === 'user' && (
-              <div className="flex gap-4 max-w-[85%] mt-8 animation-pulse">
-                  <div className="shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-indigo-100 text-indigo-600">
-                    <Database className="h-4 w-4" />
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-400 text-sm">
-                     Semantic routing in progress...
-                  </div>
+            );
+          })}
+
+          {isLoading && messages[messages.length - 1]?.role === 'user' && (
+            <div className="flex gap-4 max-w-[85%] mt-8">
+              <div className="shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-indigo-100 text-indigo-600">
+                <Database className="h-4 w-4" />
               </div>
-           )}
+              <div className="flex items-center gap-2 text-gray-400 text-sm">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Analyzing your query...
+              </div>
+            </div>
+          )}
+          <div ref={chatEndRef} />
         </div>
 
-        {/* Input Area */}
+        {/* Input */}
         <div className="p-4 bg-white border-t border-gray-100 pb-8 px-8 max-w-4xl mx-auto w-full">
-           <form onSubmit={onSubmit} className="relative flex items-center">
-             <input
-               value={input}
-               onChange={(e) => setInput(e.target.value)}
-               placeholder="Ask for an insight about the Unified Payments data..."
-               className="w-full bg-gray-50 border border-gray-200 rounded-full pl-6 pr-14 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-sans text-[15px] shadow-sm"
-               disabled={isLoading}
-             />
-             <button
-               type="submit"
-               disabled={isLoading || !input?.trim()}
-               className="absolute right-2 p-2.5 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 disabled:opacity-50 disabled:hover:bg-indigo-600 transition-colors"
-             >
-               <Send className="h-4 w-4" />
-             </button>
-           </form>
-           <div className="text-center mt-3 text-xs text-gray-400">
-              Generative outputs mapped securely to deterministic schemas. Zero data leaves your browser.
-           </div>
+          <form onSubmit={onSubmit} className="relative flex items-center">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask anything about the UPI transaction data..."
+              className="w-full bg-gray-50 border border-gray-200 rounded-full pl-6 pr-14 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-sans text-[15px] shadow-sm"
+              disabled={isLoading}
+            />
+            <button
+              type="submit"
+              disabled={isLoading || !input?.trim()}
+              className="absolute right-2 p-2.5 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 disabled:opacity-50 disabled:hover:bg-indigo-600 transition-colors"
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          </form>
+          <div className="text-center mt-3 text-xs text-gray-400">
+            AI-powered analytics processed securely in your browser. Zero data leaves your device.
+          </div>
         </div>
       </div>
     </div>
