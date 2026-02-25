@@ -6,9 +6,6 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['@duckdb/duckdb-wasm'],
   typescript: {
     ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
   }
 };
 

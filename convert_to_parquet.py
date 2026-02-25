@@ -3,24 +3,15 @@ import os
 
 print("Starting conversion to Parquet...")
 
-# Read the split CSV files to reconstruct the full dataset
-splits = [
-    r"c:\Users\vitth\OneDrive\Documents\SEM VI\InsightsX\data\train.csv",
-    r"c:\Users\vitth\OneDrive\Documents\SEM VI\InsightsX\data\test.csv",
-    r"c:\Users\vitth\OneDrive\Documents\SEM VI\InsightsX\data\further_test.csv"
-]
+# Read the main CSV file directly to maximize data context
+csv_path = r"c:\Users\vitth\OneDrive\Documents\SEM VI\InsightsX\data\upi_transactions_2024.csv"
 
-dfs = []
-for file in splits:
-    if os.path.exists(file):
-        print(f"Reading {file}...")
-        dfs.append(pd.read_csv(file))
-
-if not dfs:
-    print("Could not find CSV files. Exiting.")
+if not os.path.exists(csv_path):
+    print("Could not find unified CSV file. Exiting.")
     exit(1)
 
-df = pd.concat(dfs, ignore_index=True)
+print(f"Reading full dataset from {csv_path}...")
+df = pd.read_csv(csv_path)
 print(f"Total rows loaded: {len(df)}")
 
 # Clean column names
