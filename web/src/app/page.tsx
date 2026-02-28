@@ -21,24 +21,6 @@ export default function LandingPage() {
             </h2>
           </div>
           <nav className="hidden md:flex items-center gap-8">
-            <a
-              className="text-sm font-medium text-text-muted hover:text-primary transition-colors"
-              href="#"
-            >
-              Product
-            </a>
-            <a
-              className="text-sm font-medium text-text-muted hover:text-primary transition-colors"
-              href="#"
-            >
-              Solutions
-            </a>
-            <a
-              className="text-sm font-medium text-text-muted hover:text-primary transition-colors"
-              href="#"
-            >
-              Security
-            </a>
           </nav>
           <div className="flex items-center gap-4">
             <ThemeToggle />
@@ -87,9 +69,6 @@ export default function LandingPage() {
                   >
                     {session ? "Launch Analyst" : "Request Demo"}
                   </Link>
-                  <a href="#" className="flex h-12 items-center justify-center rounded-lg border border-gray-200 dark:border-white/10 bg-surface px-6 text-base font-semibold text-text-main hover:bg-gray-50 dark:hover:bg-white/5 hover:border-gray-300 dark:hover:border-white/20 transition-all cursor-pointer">
-                    View Documentation
-                  </a>
                 </div>
                 <div className="mt-4 flex items-center gap-4 text-sm text-text-muted">
                   <div className="flex -space-x-2">
@@ -532,9 +511,6 @@ export default function LandingPage() {
               >
                 {session ? "Go to Dashboard" : "Start 14-Day Free Trial"}
               </Link>
-              <a href="#" className="flex items-center justify-center w-full sm:w-auto px-8 py-4 bg-primary-dark text-white font-bold rounded-lg border border-white/20 hover:bg-indigo-900 transition-all text-lg">
-                Talk to Sales
-              </a>
             </div>
             <p className="mt-6 text-sm text-indigo-200">
               No credit card required. SOC2 Type II Compliant.
@@ -559,26 +535,6 @@ export default function LandingPage() {
                 Empowering finance teams with AI-driven insights for a smarter,
                 safer financial future.
               </p>
-              <div className="flex gap-4">
-                <a
-                  className="text-text-muted hover:text-primary transition-colors"
-                  href="#"
-                >
-                  <span className="material-symbols-outlined">flutter_dash</span>
-                </a>
-                <a
-                  className="text-text-muted hover:text-primary transition-colors"
-                  href="#"
-                >
-                  <span className="material-symbols-outlined">work</span>
-                </a>
-                <a
-                  className="text-text-muted hover:text-primary transition-colors"
-                  href="#"
-                >
-                  <span className="material-symbols-outlined">code</span>
-                </a>
-              </div>
             </div>
             <div>
               <h3 className="text-sm font-semibold text-text-main mb-4">
@@ -586,24 +542,24 @@ export default function LandingPage() {
               </h3>
               <ul className="space-y-3">
                 <li>
-                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                  <span className="text-sm text-text-muted hover:text-primary transition-colors cursor-default">
                     Features
-                  </a>
+                  </span>
                 </li>
                 <li>
-                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                  <span className="text-sm text-text-muted hover:text-primary transition-colors cursor-default">
                     Integrations
-                  </a>
+                  </span>
                 </li>
                 <li>
-                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                  <span className="text-sm text-text-muted hover:text-primary transition-colors cursor-default">
                     Enterprise
-                  </a>
+                  </span>
                 </li>
                 <li>
-                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                  <span className="text-sm text-text-muted hover:text-primary transition-colors cursor-default">
                     Changelog
-                  </a>
+                  </span>
                 </li>
               </ul>
             </div>
@@ -613,24 +569,24 @@ export default function LandingPage() {
               </h3>
               <ul className="space-y-3">
                 <li>
-                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                  <span className="text-sm text-text-muted hover:text-primary transition-colors cursor-default">
                     Documentation
-                  </a>
+                  </span>
                 </li>
                 <li>
-                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                  <span className="text-sm text-text-muted hover:text-primary transition-colors cursor-default">
                     API Reference
-                  </a>
+                  </span>
                 </li>
                 <li>
-                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                  <span className="text-sm text-text-muted hover:text-primary transition-colors cursor-default">
                     Blog
-                  </a>
+                  </span>
                 </li>
                 <li>
-                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                  <span className="text-sm text-text-muted hover:text-primary transition-colors cursor-default">
                     Community
-                  </a>
+                  </span>
                 </li>
               </ul>
             </div>
@@ -640,24 +596,24 @@ export default function LandingPage() {
               </h3>
               <ul className="space-y-3">
                 <li>
-                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                  <span className="text-sm text-text-muted hover:text-primary transition-colors cursor-default">
                     About
-                  </a>
+                  </span>
                 </li>
                 <li>
-                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                  <span className="text-sm text-text-muted hover:text-primary transition-colors cursor-default">
                     Careers
-                  </a>
+                  </span>
                 </li>
                 <li>
-                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                  <span className="text-sm text-text-muted hover:text-primary transition-colors cursor-default">
                     Legal
-                  </a>
+                  </span>
                 </li>
                 <li>
-                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                  <span className="text-sm text-text-muted hover:text-primary transition-colors cursor-default">
                     Contact
-                  </a>
+                  </span>
                 </li>
               </ul>
             </div>
@@ -667,12 +623,12 @@ export default function LandingPage() {
               © 2024 FinSight Analytics, Inc. All rights reserved.
             </p>
             <div className="flex gap-6">
-              <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+              <span className="text-sm text-text-muted hover:text-primary transition-colors cursor-default">
                 Privacy Policy
-              </a>
-              <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+              </span>
+              <span className="text-sm text-text-muted hover:text-primary transition-colors cursor-default">
                 Terms of Service
-              </a>
+              </span>
             </div>
           </div>
         </div>
