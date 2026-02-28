@@ -1,497 +1,682 @@
-'use client';
+"use client";
 
-import { useChat } from '@ai-sdk/react';
-import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from 'ai';
-import { useDuckDB } from '@/hooks/useDuckDB';
-import { GenerativeInsightCard, type ChartType } from '@/components/GenerativeInsightCard';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { MermaidDiagram } from '@/components/MermaidDiagram';
-import { Send, Loader2, Database, AlertCircle, LogOut } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
-import { useSession, signOut } from "next-auth/react";
-import { ThemeToggle } from '@/components/ThemeToggle';
+import Link from "next/link";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { useSession } from "next-auth/react";
 
-import { Components } from 'react-markdown';
-
-interface ChartProps {
-  type: ChartType;
-  x: string;
-  y: string;
-  narrative: string;
-}
-
-interface ToolData extends ChartProps {
-  data: Record<string, unknown>[];
-  sql?: string;
-}
-
-const markdownComponents: Components = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  pre({ children, ...props }: any) {
-    // Skip <pre> wrapper if it's a mermaid diagram to avoid hydration mismatch (<pre> cannot contain <div>)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const child = (children as any)?.[0] || children;
-    if (child?.props?.className?.includes('language-mermaid')) {
-      return <>{children}</>;
-    }
-    return <pre {...props}>{children}</pre>;
-  },
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  code({ className, children, ...props }: any) {
-    const match = /language-(\w+)/.exec(className || '');
-    const lang = match?.[1];
-    const codeString = String(children).replace(/\n$/, '');
-    
-    // Render mermaid diagrams
-    if (lang === 'mermaid') {
-      return <MermaidDiagram code={codeString} />;
-    }
-    
-    // Multi-line code blocks
-    if (lang) {
-      return (
-        <div className="relative my-2">
-          <div className="absolute top-0 right-0 px-2 py-0.5 text-[10px] font-medium text-gray-400 bg-gray-800 rounded-bl-md rounded-tr-md">
-            {lang}
-          </div>
-          <code className={className} {...props}>
-            {children}
-          </code>
-        </div>
-      );
-    }
-    
-    // Inline code
-    return <code className={className} {...props}>{children}</code>;
-  },
-  // Styled tables
-  table({ children }) {
-    return (
-      <div className="overflow-x-auto my-3 border border-gray-200 rounded-lg">
-        <table className="min-w-full text-sm">{children}</table>
-      </div>
-    );
-  },
-};
-
-export default function ChatDashboard() {
+export default function LandingPage() {
   const { data: session } = useSession();
-  const { db, loading: dbLoading, error: dbError } = useDuckDB();
-  const [toolDataStore, setToolDataStore] = useState<Record<string, ToolData>>({});
-  const chatEndRef = useRef<HTMLDivElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
-  const [isToolExecuting, setIsToolExecuting] = useState(false);
-
-  const [input, setInput] = useState('');
-  const { messages, sendMessage, addToolOutput, status } = useChat({
-    transport: new DefaultChatTransport({ api: '/api/chat' }),
-    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async onToolCall({ toolCall }: { toolCall: any }) {
-      setIsToolExecuting(true);
-      if (!db) { setIsToolExecuting(false); return; }
-      if (toolCall.dynamic) { setIsToolExecuting(false); return; }
-
-      const toolName = toolCall.toolName as string;
-      const toolCallId = toolCall.toolCallId as string;
-      const args = (toolCall.input ?? {}) as Record<string, unknown>;
-
-      console.log('Tool Call:', toolName, args);
-
-      const c = await db.connect();
-      try {
-        let query = '';
-        let chartProps: ChartProps = { type: 'bar', x: 'name', y: 'value', narrative: '' };
-
-        switch (toolName) {
-          // ─── Original 4 tools ───────────────────────────────
-          case 'analyze_transaction_status': {
-            const ageGroup = String(args.age_group ?? '');
-            const state = String(args.state ?? '');
-            query = `SELECT transaction_status as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE sender_age_group='${ageGroup}' AND sender_state='${state}' GROUP BY transaction_status`;
-            chartProps = { type: 'pie', x: 'name', y: 'value', narrative: `Transaction status distribution for ${ageGroup} demographic in ${state}.` };
-            break;
-          }
-          case 'compare_network_failures': {
-            const pn = String(args.primary_network ?? '');
-            const sn = String(args.secondary_network ?? '');
-            query = `SELECT network_type as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE network_type IN ('${pn}','${sn}') AND transaction_status='FAILED' GROUP BY network_type`;
-            chartProps = { type: 'bar', x: 'name', y: 'value', narrative: `Failure comparison between ${pn} and ${sn} networks.` };
-            break;
-          }
-          case 'average_transaction_value': {
-            const cat = String(args.category ?? '');
-            const sh = Number(args.start_hour ?? 0);
-            const eh = Number(args.end_hour ?? 23);
-            query = `SELECT CAST(hour_of_day AS VARCHAR) as name, CAST(AVG(amount_inr) AS INTEGER) as value FROM transactions WHERE merchant_category='${cat}' AND hour_of_day BETWEEN ${sh} AND ${eh} GROUP BY hour_of_day ORDER BY hour_of_day`;
-            chartProps = { type: 'line', x: 'name', y: 'value', narrative: `Average ₹ for ${cat} between ${sh}:00 and ${eh}:00.` };
-            break;
-          }
-          case 'merchant_risk_analysis': {
-            const lim = Number(args.limit) || 5;
-            query = `SELECT merchant_category as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE fraud_flag=1 GROUP BY merchant_category ORDER BY value DESC LIMIT ${lim}`;
-            chartProps = { type: 'bar', x: 'name', y: 'value', narrative: `Top ${lim} categories flagged for anomalous transactions.` };
-            break;
-          }
-
-          // ─── New tools ──────────────────────────────────────
-          case 'hourly_volume_trend': {
-            const stateF = args.state ? `AND sender_state='${args.state}'` : '';
-            const catF = args.category ? `AND merchant_category='${args.category}'` : '';
-            query = `SELECT CAST(hour_of_day AS VARCHAR) as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE 1=1 ${stateF} ${catF} GROUP BY hour_of_day ORDER BY hour_of_day`;
-            chartProps = { type: 'area', x: 'name', y: 'value', narrative: `Hourly transaction volume trend${args.state ? ` in ${args.state}` : ''}${args.category ? ` for ${args.category}` : ''}.` };
-            break;
-          }
-          case 'daily_pattern_analysis': {
-            const sf = args.status_filter === 'ALL' ? '' : `AND transaction_status='${args.status_filter}'`;
-            query = `SELECT day_of_week as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE 1=1 ${sf} GROUP BY day_of_week ORDER BY CASE day_of_week WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3 WHEN 'Thursday' THEN 4 WHEN 'Friday' THEN 5 WHEN 'Saturday' THEN 6 WHEN 'Sunday' THEN 7 END`;
-            chartProps = { type: 'radar', x: 'name', y: 'value', narrative: `Weekly transaction pattern${args.status_filter !== 'ALL' ? ` (${args.status_filter} only)` : ''}.` };
-            break;
-          }
-          case 'bank_performance': {
-            const bankLim = Number(args.limit) || 10;
-            query = `SELECT sender_bank as name, CAST(SUM(CASE WHEN transaction_status='SUCCESS' THEN 1 ELSE 0 END) AS INTEGER) as value, CAST(SUM(CASE WHEN transaction_status='FAILED' THEN 1 ELSE 0 END) AS INTEGER) as failed FROM transactions GROUP BY sender_bank ORDER BY (value+failed) DESC LIMIT ${bankLim}`;
-            chartProps = { type: 'bar', x: 'name', y: 'value', narrative: `Top ${bankLim} banks by transaction volume (success count shown).` };
-            break;
-          }
-          case 'geographic_distribution': {
-            const geoSf = args.status_filter === 'ALL' ? '' : `AND transaction_status='${args.status_filter}'`;
-            const geoLim = Number(args.limit) || 10;
-            query = `SELECT sender_state as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE 1=1 ${geoSf} GROUP BY sender_state ORDER BY value DESC LIMIT ${geoLim}`;
-            chartProps = { type: 'bar', x: 'name', y: 'value', narrative: `Geographic distribution of UPI transactions across top ${geoLim} states.` };
-            break;
-          }
-          case 'device_type_breakdown': {
-            const devState = args.state ? `AND sender_state='${args.state}'` : '';
-            query = `SELECT device_type as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE 1=1 ${devState} GROUP BY device_type ORDER BY value DESC`;
-            chartProps = { type: 'pie', x: 'name', y: 'value', narrative: `Device type distribution${args.state ? ` in ${args.state}` : ''}.` };
-            break;
-          }
-          case 'revenue_by_category': {
-            const ageF = args.age_group === 'ALL' ? '' : `AND sender_age_group='${args.age_group}'`;
-            query = `SELECT merchant_category as name, CAST(SUM(amount_inr) AS INTEGER) as value FROM transactions WHERE 1=1 ${ageF} GROUP BY merchant_category ORDER BY value DESC`;
-            chartProps = { type: 'composed', x: 'name', y: 'value', narrative: `Total revenue (₹) per merchant category${args.age_group !== 'ALL' ? ` for ${args.age_group} age group` : ''}.` };
-            break;
-          }
-          case 'transaction_type_split': {
-            const txState = args.state ? `AND sender_state='${args.state}'` : '';
-            query = `SELECT transaction_type as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE 1=1 ${txState} GROUP BY transaction_type ORDER BY value DESC`;
-            chartProps = { type: 'pie', x: 'name', y: 'value', narrative: `Transaction type distribution (P2P, P2M, etc.)${args.state ? ` in ${args.state}` : ''}.` };
-            break;
-          }
-          case 'peak_usage_analysis': {
-            const pkCat = args.category ? `AND merchant_category='${args.category}'` : '';
-            const pkState = args.state ? `AND sender_state='${args.state}'` : '';
-            query = `SELECT CAST(hour_of_day AS VARCHAR) as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE 1=1 ${pkCat} ${pkState} GROUP BY hour_of_day ORDER BY value DESC LIMIT 10`;
-            chartProps = { type: 'area', x: 'name', y: 'value', narrative: `Peak usage hours${args.category ? ` for ${args.category}` : ''}${args.state ? ` in ${args.state}` : ''}.` };
-            break;
-          }
-        }
-
-        if (query) {
-          console.log('Query:', query);
-          const result = await c.query(query);
-          const rows = result.toArray().map(r => {
-            const entries = r as Iterable<[string, unknown]>;
-            return Object.fromEntries(entries);
-          });
-
-          setToolDataStore(prev => ({
-            ...prev,
-            [toolCallId]: { data: rows, ...chartProps, sql: query }
-          }));
-
-          addToolOutput({
-            tool: toolName,
-            toolCallId,
-            output: JSON.stringify({ rowCount: rows.length, chartType: chartProps.type, narrative: chartProps.narrative }),
-          });
-        }
-      } catch (e) {
-        console.error('DuckDB Error:', e);
-        addToolOutput({
-          tool: toolName,
-          toolCallId,
-          output: JSON.stringify({ error: String(e) }),
-        });
-      } finally {
-        await c.close();
-        setIsToolExecuting(false);
-      }
-    }
-  });
-
-  const isLoading = isToolExecuting || status === 'submitted' || status === 'streaming';
-
-  // Smart Auto-scroll: only scroll if the user hasn't manually scrolled up
-  useEffect(() => {
-    if (isAutoScrollEnabled) {
-      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages, isLoading, isAutoScrollEnabled]);
-
-  const handleScroll = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    // Disable auto-scroll if the user is more than 60px away from the bottom
-    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
-    setIsAutoScrollEnabled(isAtBottom);
-  };
-
-  const onSubmit = (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!input.trim() || isLoading) return;
-    sendMessage({ text: input });
-    setInput('');
-    setIsAutoScrollEnabled(true);
-  };
-
-  if (dbLoading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-500 font-sans">
-        <Database className="h-8 w-8 text-indigo-500 mb-4 animate-pulse" />
-        <p className="text-lg font-medium">Booting In-Browser Data Engine...</p>
-        <p className="text-sm mt-2">Loading transactions.parquet (0 network latency)</p>
-      </div>
-    );
-  }
-
-  if (dbError) {
-    return (
-      <div className="min-h-screen p-8 flex items-center justify-center bg-red-50 font-sans">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-red-100 max-w-lg text-center">
-          <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-4" />
-          <h1 className="text-xl font-bold text-red-900 mb-2">Engine Initialization Failed</h1>
-          <p className="text-red-700">{dbError}</p>
-        </div>
-      </div>
-    );
-  }
-
-  const EXAMPLES = [
-    'Show me the distribution of transaction statuses for the 18-25 age group in Maharashtra',
-    'Compare technical failure rates on 4G vs 5G networks',
-    'What merchant categories have the highest fraud flags?',
-    'Show me the hourly transaction volume trend',
-    'Which states have the most UPI transactions?',
-    'What is the device type breakdown across users?',
-    'Show me revenue by merchant category',
-    'What does the weekly transaction pattern look like?',
-    'Which banks have the best success rates?',
-    'Give me a business overview of the UPI data',
-  ];
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-[#020617] font-sans transition-colors">
-      {/* Sidebar */}
-      <div className="w-80 bg-white dark:bg-[#0f172a] border-r border-gray-200 dark:border-white/10 shadow-sm flex flex-col transition-colors">
-        <div className="p-6 border-b border-gray-100 dark:border-white/10 flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 mb-2">
-              <Database className="h-5 w-5" />
-              <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">InsightsX OLAP</h1>
+    <div className="relative flex min-h-screen w-full flex-col group/design-root">
+      {/* Navbar */}
+      <header className="sticky top-0 z-50 w-full border-b border-gray-200 dark:border-white/10 bg-surface/80 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-2">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <span className="material-symbols-outlined">analytics</span>
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 leading-tight">Zero-latency In-Browser Analytics using DuckDB-WASM × AI.</p>
+            <h2 className="text-xl font-bold tracking-tight text-text-main">
+              FinSight
+            </h2>
           </div>
-        </div>
-        <div className="p-6 flex-1 overflow-y-auto">
-          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Architecture</h3>
-          <ul className="space-y-3 text-sm text-gray-600 dark:text-gray-300">
-            {['DuckDB Worker: Active', 'LLM Router: Operational', 'Parquet Source: Loaded'].map(s => (
-              <li key={s} className="flex items-start gap-2">
-                <div className="mt-0.5 rounded-full bg-green-100 p-1"><div className="h-1.5 w-1.5 rounded-full bg-green-500" /></div>
-                {s}
-              </li>
-            ))}
-          </ul>
-
-          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-8 mb-4">Query Examples</h3>
-          <div className="space-y-2">
-            {EXAMPLES.map((q) => (
-              <button
-                key={q}
-                onClick={() => sendMessage({ text: q })}
-                className="text-left w-full text-xs p-2.5 rounded-lg border border-gray-200 dark:border-white/10 hover:border-indigo-300 dark:hover:border-indigo-500/30 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors text-gray-600 dark:text-gray-300"
-              >
-                {q}
-              </button>
-            ))}
-          </div>
-        </div>
-        
-        {/* User Profile / Logout */}
-        <div className="px-4 pt-4 pb-12 border-t border-gray-100 dark:border-white/10 bg-gray-50 dark:bg-[#1e293b] flex items-center justify-between mt-auto shrink-0 transition-colors relative">
-          <div className="text-[13px] font-medium text-gray-700 dark:text-gray-300 truncate min-w-0 pr-3 z-10">
-             {session?.user?.email}
-          </div>
-          <div className="flex gap-1 shrink-0">
-            <ThemeToggle />
-            {/* {session?.user?.role === 'admin' && (
-              <a href="/admin" className="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 rounded-lg transition-colors border border-transparent hover:border-indigo-100 dark:hover:border-indigo-500/30" title="Admin Dashboard">
-                <ShieldAlert className="w-5 h-5" />
-              </a>
-            )} */}
-            <button
-              onClick={() => signOut()}
-              className="p-2 text-gray-500 dark:text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/20 dark:hover:text-red-400 rounded-lg transition-colors border border-transparent hover:border-red-100 dark:hover:border-red-500/30"
-              title="Sign Out"
+          <nav className="hidden md:flex items-center gap-8">
+            <a
+              className="text-sm font-medium text-text-muted hover:text-primary transition-colors"
+              href="#"
             >
-              <LogOut className="w-5 h-5" />
-            </button>
+              Product
+            </a>
+            <a
+              className="text-sm font-medium text-text-muted hover:text-primary transition-colors"
+              href="#"
+            >
+              Solutions
+            </a>
+            <a
+              className="text-sm font-medium text-text-muted hover:text-primary transition-colors"
+              href="#"
+            >
+              Security
+            </a>
+          </nav>
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+            {!session && (
+              <Link
+                href="/login"
+                className="hidden sm:flex h-9 items-center justify-center rounded-lg px-4 text-sm font-medium text-text-muted hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+              >
+                Log in
+              </Link>
+            )}
+            <Link
+              href={session ? "/chat" : "/register"}
+              className="flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-sm font-bold text-white shadow-sm hover:bg-primary-dark transition-all focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+            >
+              {session ? "Enter Workspace" : "Launch Analyst"}
+            </Link>
           </div>
         </div>
-      </div>
-
-      {/* Main Chat */}
-      <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-[#020617] transition-colors">
-        <div 
-          className="flex-1 overflow-y-auto px-8 w-full max-w-4xl mx-auto py-8"
-          ref={scrollRef}
-          onScroll={handleScroll}
-        >
-          {messages.length === 0 && (
-            <div className="h-full flex flex-col items-center justify-center text-gray-400 space-y-4">
-              <div className="h-16 w-16 bg-linear-to-tr from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-indigo-900/40 rotate-3">
-                <Database className="h-8 w-8 text-white -rotate-3" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">InsightsX Analytics</h2>
-              <p className="text-center max-w-md text-gray-500 dark:text-gray-400">
-                Ask anything about UPI transaction data. Get visualizations, business insights, and strategic analysis — all processed locally in your browser.
-              </p>
-            </div>
-          )}
-
-          {messages.map((m) => {
-            const textContent = m.parts
-              ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
-              .map(p => p.text)
-              .join('\n');
-
-            const toolParts = m.parts?.filter(p =>
-              (p.type.startsWith('tool-') || p.type === 'dynamic-tool') && 'toolCallId' in p
-            ) ?? [];
-
-            return (
-              <div key={m.id} className={`mb-8 flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`flex gap-4 max-w-[85%] ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                  {/* Avatar */}
-                  <div className={`shrink-0 flex items-center justify-center h-8 w-8 rounded-full ${m.role === 'user' ? 'bg-gray-100 text-gray-500' : 'bg-indigo-100 text-indigo-600'}`}>
-                    {m.role === 'user' ? 'U' : <Database className="h-4 w-4" />}
+      </header>
+      <main className="grow">
+        {/* Hero Section */}
+        <section className="relative overflow-hidden pt-16 pb-20 lg:pt-24 lg:pb-32">
+          {/* Background Decoration */}
+          <div className="absolute -top-24 -right-24 -z-10 h-[500px] w-[500px] rounded-full bg-primary/5 blur-3xl"></div>
+          <div className="absolute top-1/2 left-0 -z-10 h-[300px] w-[300px] -translate-y-1/2 rounded-full bg-indigo-300/10 dark:bg-indigo-500/10 blur-3xl"></div>
+          <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
+            <div className="grid gap-12 lg:grid-cols-2 lg:gap-8 items-center">
+              <div className="flex flex-col items-start gap-6 max-w-2xl">
+                <div className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary ring-1 ring-inset ring-primary/20">
+                  New: Real-time Anomaly Detection v2.0
+                </div>
+                <h1 className="text-4xl font-black tracking-tight text-text-main sm:text-5xl lg:text-6xl leading-[1.1]">
+                  Your Digital Payments Data, Translated into{" "}
+                  <span className="text-primary">Executive Action</span>
+                </h1>
+                <p className="text-lg text-text-muted leading-relaxed max-w-lg">
+                  Query over 250,000+ daily transactions in plain English and
+                  get instant, compliant insights without writing a single line
+                  of SQL.
+                </p>
+                <div className="flex flex-wrap gap-4 mt-2">
+                  <Link
+                    href={session ? "/chat" : "/register"}
+                    className="flex h-12 items-center justify-center rounded-lg bg-primary px-6 text-base font-bold text-white shadow-lg hover:bg-primary-dark hover:shadow-primary/25 transition-all"
+                  >
+                    {session ? "Launch Analyst" : "Request Demo"}
+                  </Link>
+                  <a href="#" className="flex h-12 items-center justify-center rounded-lg border border-gray-200 dark:border-white/10 bg-surface px-6 text-base font-semibold text-text-main hover:bg-gray-50 dark:hover:bg-white/5 hover:border-gray-300 dark:hover:border-white/20 transition-all cursor-pointer">
+                    View Documentation
+                  </a>
+                </div>
+                <div className="mt-4 flex items-center gap-4 text-sm text-text-muted">
+                  <div className="flex -space-x-2">
+                    <div
+                      className="h-8 w-8 rounded-full bg-gray-200 border-2 border-surface overflow-hidden"
+                      title="User avatar 1"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        alt="User 1"
+                        className="h-full w-full object-cover"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuBbHomfEWGjpOynvhQFniSYBpsrjQO0dNvWjBCn0XLyo2Ocw7Ph9lW1Ge8DXPuQPDwzb-s3UB9IM0QBDCp0GbcmaexqGMeIFZsZ55a8ESZP9c0aGGmjl9wDvr5ZitkK_UpiDfBDEAuC-R9Jqwnvr4QRLt3Ydzw50I92xOOwFE_ZJiO6a7bUuBzQPR-6xrt1nan7bVzeyj-Q1XF_qQDZJ2_TluYsH0oqvWUXP0gp8N6xlP-zD2A03c1j6UAfIugkwol2WBMR9Zw3"
+                      />
+                    </div>
+                    <div
+                      className="h-8 w-8 rounded-full bg-gray-200 border-2 border-surface overflow-hidden"
+                      title="User avatar 2"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        alt="User 2"
+                        className="h-full w-full object-cover"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4jLiDXDUu_R6fvWHatMBM5DfwiE9KR_mK5veU8Ce1DW5VumYT-gL9kP7JtFMVlUr4iI-4ZwpfGYaPlRDjo8q7tfMT0qeOorab7ONInJ0gI9wjVHjbz3HQPQah_UZRnEbfTr1yaczx7kbREo07IglW13M41QAPav19mdrIn-jIDTgmO6nFcCD4O5IRzlAYGK8Fur60Ld-BqUHlyQMZKtRO0RO-tsss8hC2jdBqITrUM0UvI-RzjZpQNyrjZMCMHqM-HRRFGh4R"
+                      />
+                    </div>
+                    <div
+                      className="h-8 w-8 rounded-full bg-gray-200 border-2 border-surface overflow-hidden"
+                      title="User avatar 3"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        alt="User 3"
+                        className="h-full w-full object-cover"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuC01b5dFDTflRaXIoYRw-9FbKRKm1KlaU6IPN1MrcVkZ6hOrExeb6FPiqU4QAsB6Ax-6qriSnLYdSkmEJdb7CZ6R00LIku8AAFPavYjaxBEn3xq3Iny6RQ85d7ftioG6d6zd_jEs9-0xPZGeL8PAoCcH1XGXpan_c_dO6AKzpSXVo36H42szLezV4tlYgg08kWCNBFpJc8REJErzM0CUUNK6GxwDsPwa7gklXsnrN7jHULNMR2Xmax7UcS5bjkzLIAhqX7pDTNV"
+                      />
+                    </div>
                   </div>
-
-                  {/* Content */}
-                  <div className="flex-1 space-y-2 min-w-0">
-                    {textContent && (
-                      <div className={`p-4 rounded-2xl text-[15px] leading-relaxed shadow-sm border ${
-                        m.role === 'user'
-                          ? 'bg-indigo-600 text-white rounded-tr-none border-transparent'
-                          : 'bg-white dark:bg-[#0f172a] text-gray-800 dark:text-gray-200 rounded-tl-none border-gray-100 dark:border-white/10'
-                      }`}>
-                        {m.role === 'user' ? (
-                          textContent
-                        ) : (
-                          <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-gray-900 dark:prose-headings:text-gray-100 prose-strong:text-gray-900 dark:prose-strong:text-white prose-a:text-indigo-600 dark:prose-a:text-indigo-400 prose-blockquote:border-indigo-300 dark:prose-blockquote:border-indigo-500/50 prose-blockquote:text-gray-600 dark:prose-blockquote:text-gray-400 prose-code:bg-gray-100 dark:prose-code:bg-[#1e293b] prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-indigo-700 dark:prose-code:text-indigo-300 prose-code:text-xs prose-pre:bg-gray-900 dark:prose-pre:bg-[#0f172a] prose-pre:text-gray-100 prose-th:bg-gray-50 dark:prose-th:bg-[#1e293b] prose-td:border-gray-200 dark:prose-td:border-white/10 prose-th:border-gray-200 dark:prose-th:border-white/10">
-                            <ReactMarkdown
-                              remarkPlugins={[remarkGfm]}
-                              components={markdownComponents}
-                            >
-                              {textContent}
-                            </ReactMarkdown>
-                          </div>
-                        )}
+                  <p>Trusted by 500+ Finance Leaders</p>
+                </div>
+              </div>
+              {/* Isometric Mockup */}
+              <div className="relative lg:h-[600px] flex items-center justify-center perspective-container w-full">
+                <style dangerouslySetInnerHTML={{ __html: `
+                  .isometric-card {
+                      transform: perspective(1000px) rotateX(10deg) rotateY(-10deg) rotateZ(2deg);
+                      box-shadow: 20px 20px 50px rgba(80, 72, 229, 0.15);
+                      transition: transform 0.3s ease;
+                  }
+                  .isometric-card:hover {
+                      transform: perspective(1000px) rotateX(5deg) rotateY(-5deg) rotateZ(1deg) translateY(-10px);
+                  }
+                `}} />
+                <div className="relative w-full max-w-lg isometric-card bg-surface rounded-2xl border border-gray-100 dark:border-white/10 p-6">
+                  {/* Header of Mockup */}
+                  <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/10 pb-4 mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-3 w-3 rounded-full bg-red-400"></div>
+                      <div className="h-3 w-3 rounded-full bg-yellow-400"></div>
+                      <div className="h-3 w-3 rounded-full bg-green-400"></div>
+                    </div>
+                    <div className="text-xs font-mono text-gray-400">
+                      FinSight Analyst Console
+                    </div>
+                  </div>
+                  {/* Chat Interface Mockup */}
+                  <div className="space-y-4">
+                    <div className="flex gap-3">
+                      <div className="shrink-0 h-8 w-8 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-500 dark:text-gray-300">
+                        <span className="material-symbols-outlined text-sm">
+                          person
+                        </span>
                       </div>
-                    )}
-
-                    {toolParts.map((part) => {
-                      const inv = part as unknown as Record<string, unknown>;
-                      const toolCallId = inv.toolCallId as string;
-                      const resultData = toolDataStore[toolCallId];
-                      const toolName = ('toolName' in inv ? String(inv.toolName) : part.type.replace('tool-', ''));
-
-                      return (
-                        <div key={toolCallId} className="w-full mt-4">
-                          {inv.state === 'input-streaming' || inv.state === 'partial-call' ? (
-                            <div className="flex items-center gap-2 p-3 bg-indigo-50/50 text-indigo-700 rounded-lg text-sm border border-indigo-100 w-fit">
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              <span className="font-medium">Querying local DuckDB...</span>
-                              <code className="text-xs bg-indigo-100/50 px-2 py-0.5 rounded opacity-70">
-                                {toolName}(...)
-                              </code>
+                      <div className="bg-gray-50 dark:bg-white/5 rounded-lg rounded-tl-none p-3 text-sm text-gray-700 dark:text-gray-200 shadow-sm border border-gray-100 dark:border-white/5">
+                        Show me revenue by merchant category for Q3 2024.
+                        Highlight any anomalies.
+                      </div>
+                    </div>
+                    <div className="flex gap-3 flex-row-reverse">
+                      <div className="shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                        <span className="material-symbols-outlined text-sm">
+                          smart_toy
+                        </span>
+                      </div>
+                      <div className="bg-primary/5 rounded-lg rounded-tr-none p-4 text-sm text-gray-800 dark:text-gray-200 shadow-sm w-full border border-primary/10">
+                        <p className="mb-3 font-medium text-primary">
+                          Here is the breakdown. I detected a 45% spike in
+                          &quot;Electronics&quot; transactions on September 12th.
+                        </p>
+                        {/* Mini Chart Visual */}
+                        <div className="h-32 flex items-end justify-between gap-2 px-2 pb-2 border-l border-b border-gray-200 dark:border-white/10">
+                          <div className="w-1/5 bg-primary/40 rounded-t-sm h-[40%]"></div>
+                          <div className="w-1/5 bg-primary/60 rounded-t-sm h-[65%]"></div>
+                          <div className="w-1/5 bg-primary rounded-t-sm h-[90%] relative group">
+                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                              $1.2M (Spike)
                             </div>
-                          ) : resultData ? (
-                            <GenerativeInsightCard
-                              intent={`${toolName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`}
-                              filters={Object.fromEntries(
-                                Object.entries((inv.input as Record<string, unknown>) ?? {})
-                                  .filter(([, v]) => v !== undefined && v !== null && v !== '')
-                                  .map(([k, v]) => [k.replace(/_/g, ' '), String(v)])
-                              )}
-                              data={resultData.data}
-                              chartType={resultData.type}
-                              dataKeyX={resultData.x}
-                              dataKeyY={resultData.y}
-                              narrative={resultData.narrative}
-                              executedQuery={resultData.sql}
-                            />
-                          ) : (
-                            <div className="flex items-center gap-2 p-3 bg-amber-50 text-amber-700 rounded-lg text-sm border border-amber-100 w-fit">
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              <span>Processing {toolName}...</span>
-                            </div>
-                          )}
+                          </div>
+                          <div className="w-1/5 bg-primary/50 rounded-t-sm h-[55%]"></div>
+                          <div className="w-1/5 bg-primary/30 rounded-t-sm h-[30%]"></div>
                         </div>
-                      );
-                    })}
+                        <div className="flex justify-between text-[10px] text-gray-400 mt-1 px-1">
+                          <span>Jul</span>
+                          <span>Aug</span>
+                          <span>Sep</span>
+                          <span>Oct</span>
+                          <span>Nov</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {/* Floating Element */}
+                <div
+                  className="absolute -bottom-6 -left-6 bg-surface p-4 rounded-xl shadow-xl border border-gray-100 dark:border-white/10 animate-bounce"
+                  style={{ animationDuration: "3s" }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-500/20 flex items-center justify-center text-green-600 dark:text-green-400">
+                      <span className="material-symbols-outlined">
+                        check_circle
+                      </span>
+                    </div>
+                    <div>
+                      <div className="text-xs text-text-muted">
+                        System Status
+                      </div>
+                      <div className="text-sm font-bold text-text-main">
+                        All Systems Operational
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            );
-          })}
-
-          {isLoading && messages[messages.length - 1]?.role === 'user' && (
-            <div className="flex gap-4 max-w-[85%] mt-8">
-              <div className="shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-indigo-100 text-indigo-600">
-                <Database className="h-4 w-4" />
+            </div>
+          </div>
+        </section>
+        {/* Features Section */}
+        <section className="py-20 bg-surface">
+          <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
+            <div className="mb-16">
+              <h2 className="text-3xl font-bold tracking-tight text-text-main sm:text-4xl max-w-2xl mb-4">
+                Enterprise-Grade Intelligence
+              </h2>
+              <p className="text-lg text-text-muted max-w-2xl">
+                FinSight transforms raw payment logs into strategic narratives
+                for the modern CFO, enabling data-driven decisions at speed.
+              </p>
+            </div>
+            <div className="grid gap-8 md:grid-cols-3">
+              {/* Feature 1 */}
+              <div className="group relative rounded-2xl border border-gray-200 dark:border-white/10 bg-background p-8 transition-all hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5">
+                <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
+                  <span className="material-symbols-outlined text-2xl">
+                    psychology
+                  </span>
+                </div>
+                <h3 className="mb-3 text-xl font-bold text-text-main">
+                  Interpret Intent
+                </h3>
+                <p className="text-text-muted leading-relaxed">
+                  Natural language processing deciphers complex transaction
+                  anomalies instantly. Ask questions like you would to a human
+                  analyst.
+                </p>
               </div>
-              <div className="flex items-center gap-2 text-gray-400 text-sm">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Analyzing your query...
+              {/* Feature 2 */}
+              <div className="group relative rounded-2xl border border-gray-200 dark:border-white/10 bg-background p-8 transition-all hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5">
+                <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
+                  <span className="material-symbols-outlined text-2xl">
+                    shield_lock
+                  </span>
+                </div>
+                <h3 className="mb-3 text-xl font-bold text-text-main">
+                  Proactive Risk Detection
+                </h3>
+                <p className="text-text-muted leading-relaxed">
+                  Identify fraud patterns before they settle. Our real-time
+                  heuristic scanning engine monitors thousands of signals per
+                  millisecond.
+                </p>
+              </div>
+              {/* Feature 3 */}
+              <div className="group relative rounded-2xl border border-gray-200 dark:border-white/10 bg-background p-8 transition-all hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5">
+                <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
+                  <span className="material-symbols-outlined text-2xl">
+                    visibility
+                  </span>
+                </div>
+                <h3 className="mb-3 text-xl font-bold text-text-main">
+                  Glass-Box Explainability
+                </h3>
+                <p className="text-text-muted leading-relaxed">
+                  No black boxes. Every AI insight comes with a full audit trail
+                  and transparent logic visualization for regulatory compliance.
+                </p>
               </div>
             </div>
-          )}
-          <div ref={chatEndRef} />
-        </div>
-
-        {/* Input */}
-        <div className="p-4 bg-white dark:bg-[#020617] border-t border-gray-100 dark:border-white/10 pb-8 px-8 max-w-4xl mx-auto w-full transition-colors">
-          <form onSubmit={onSubmit} className="relative flex items-center">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask anything about the UPI transaction data..."
-              className="w-full bg-white dark:bg-[#0f172a] border-gray-200 dark:border-white/10 border text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 rounded-full pl-6 pr-14 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-sans text-[15px] shadow-sm"
-              disabled={isLoading}
-            />
-            <button
-              type="submit"
-              disabled={isLoading || !input?.trim()}
-              className="absolute right-2 p-2.5 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 disabled:opacity-50 disabled:hover:bg-indigo-600 transition-colors"
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </button>
-          </form>
-          <div className="text-center mt-3 text-xs text-gray-400">
-            AI-powered analytics processed securely in your browser. Zero data leaves your device.
+          </div>
+        </section>
+        {/* Data Integrations Section */}
+        <section className="py-16 bg-surface overflow-hidden border-t border-gray-200 dark:border-white/10">
+          <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
+            <p className="text-center text-sm font-semibold uppercase tracking-widest text-text-muted mb-10">
+              Seamlessly integrates with your modern data stack
+            </p>
+            <div className="grid grid-cols-2 gap-8 md:grid-cols-4 items-center justify-items-center opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 bg-[#336791]/10 rounded flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[#336791]">
+                    database
+                  </span>
+                </div>
+                <span className="font-bold text-xl text-text-main tracking-tight">
+                  PostgreSQL
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 bg-[#29B5E8]/10 rounded flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[#29B5E8]">
+                    ac_unit
+                  </span>
+                </div>
+                <span className="font-bold text-xl text-text-main tracking-tight">
+                  Snowflake
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 bg-[#47A248]/10 rounded flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[#47A248]">
+                    energy_savings_leaf
+                  </span>
+                </div>
+                <span className="font-bold text-xl text-text-main tracking-tight">
+                  MongoDB
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 bg-[#4285F4]/10 rounded flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[#4285F4]">
+                    query_stats
+                  </span>
+                </div>
+                <span className="font-bold text-xl text-text-main tracking-tight">
+                  BigQuery
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+        {/* How It Works Section */}
+        <section className="py-24 bg-background border-t border-gray-200 dark:border-white/10">
+          <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-3xl mx-auto mb-20">
+              <h2 className="text-3xl font-bold text-text-main tracking-tight sm:text-4xl mb-6">
+                From Data to Decision in Seconds
+              </h2>
+              <p className="text-text-muted text-lg">
+                A simple three-step process to transform how your organization
+                handles payment intelligence.
+              </p>
+            </div>
+            <div className="grid md:grid-cols-3 gap-12 relative">
+              <div className="hidden md:block absolute top-1/2 left-0 w-full h-px bg-linear-to-r from-transparent via-gray-200 dark:via-gray-800 to-transparent -translate-y-12"></div>
+              <div className="relative flex flex-col items-center text-center group">
+                <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-2xl bg-primary text-white shadow-[0_0_30px_rgba(80,72,229,0.3)] transition-transform group-hover:-translate-y-2">
+                  <span className="material-symbols-outlined text-4xl">
+                    cable
+                  </span>
+                </div>
+                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-surface border border-gray-200 dark:border-gray-700 text-xs font-bold mb-4 text-text-main">
+                  1
+                </div>
+                <h3 className="text-xl font-bold text-text-main mb-3">Connect</h3>
+                <p className="text-text-muted text-sm leading-relaxed px-4">
+                  Securely link your payment gateways and data warehouses with
+                  one-click OAuth integrations.
+                </p>
+              </div>
+              <div className="relative flex flex-col items-center text-center group">
+                <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-2xl bg-primary text-white shadow-[0_0_30px_rgba(80,72,229,0.3)] transition-transform group-hover:-translate-y-2">
+                  <span className="material-symbols-outlined text-4xl">
+                    search_insights
+                  </span>
+                </div>
+                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-surface border border-gray-200 dark:border-gray-700 text-xs font-bold mb-4 text-text-main">
+                  2
+                </div>
+                <h3 className="text-xl font-bold text-text-main mb-3">Query</h3>
+                <p className="text-text-muted text-sm leading-relaxed px-4">
+                  Ask complex financial questions in plain English. Our
+                  LLM-engine translates intent to deep analytics.
+                </p>
+              </div>
+              <div className="relative flex flex-col items-center text-center group">
+                <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-2xl bg-primary text-white shadow-[0_0_30px_rgba(80,72,229,0.3)] transition-transform group-hover:-translate-y-2">
+                  <span className="material-symbols-outlined text-4xl">
+                    bolt
+                  </span>
+                </div>
+                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-surface border border-gray-200 dark:border-gray-700 text-xs font-bold mb-4 text-text-main">
+                  3
+                </div>
+                <h3 className="text-xl font-bold text-text-main mb-3">Act</h3>
+                <p className="text-text-muted text-sm leading-relaxed px-4">
+                  Receive automated summaries and direct actions to mitigate
+                  risks or optimize your revenue streams.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+        {/* Testimonials Section */}
+        <section className="py-24 bg-surface border-y border-gray-200 dark:border-white/10">
+          <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
+            <div className="mb-16 text-center">
+              <h2 className="text-3xl font-bold text-text-main mb-4 tracking-tight">
+                Trusted by Industry Titans
+              </h2>
+              <p className="text-text-muted">
+                See how finance executives are leveraging FinSight.
+              </p>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="bg-background p-8 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex text-amber-400 mb-4">
+                  <span className="material-symbols-outlined">star</span>
+                  <span className="material-symbols-outlined">star</span>
+                  <span className="material-symbols-outlined">star</span>
+                  <span className="material-symbols-outlined">star</span>
+                  <span className="material-symbols-outlined">star</span>
+                </div>
+                <p className="text-text-main font-medium italic mb-6 leading-relaxed">
+                  &quot;FinSight transformed our risk posture in less than a
+                  quarter. The ability to query millions of transactions in
+                  seconds has become an indispensable part of our workflow.&quot;
+                </p>
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      alt="CFO"
+                      className="h-full w-full object-cover"
+                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4jLiDXDUu_R6fvWHatMBM5DfwiE9KR_mK5veU8Ce1DW5VumYT-gL9kP7JtFMVlUr4iI-4ZwpfGYaPlRDjo8q7tfMT0qeOorab7ONInJ0gI9wjVHjbz3HQPQah_UZRnEbfTr1yaczx7kbREo07IglW13M41QAPav19mdrIn-jIDTgmO6nFcCD4O5IRzlAYGK8Fur60Ld-BqUHlyQMZKtRO0RO-tsss8hC2jdBqITrUM0UvI-RzjZpQNyrjZMCMHqM-HRRFGh4R"
+                    />
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-text-main">
+                      Sarah Jenkins
+                    </div>
+                    <div className="text-xs text-text-muted">
+                      CFO, Global Pay Inc.
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-background p-8 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex text-amber-400 mb-4">
+                  <span className="material-symbols-outlined">star</span>
+                  <span className="material-symbols-outlined">star</span>
+                  <span className="material-symbols-outlined">star</span>
+                  <span className="material-symbols-outlined">star</span>
+                  <span className="material-symbols-outlined">star</span>
+                </div>
+                <p className="text-text-main font-medium italic mb-6 leading-relaxed">
+                  &quot;The explainability feature is the real game-changer. For
+                  the first time, our audit team actually trusts the AI-generated
+                  insights because they can see the underlying logic.&quot;
+                </p>
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      alt="Data Leader"
+                      className="h-full w-full object-cover"
+                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuBbHomfEWGjpOynvhQFniSYBpsrjQO0dNvWjBCn0XLyo2Ocw7Ph9lW1Ge8DXPuQPDwzb-s3UB9IM0QBDCp0GbcmaexqGMeIFZsZ55a8ESZP9c0aGGmjl9wDvr5ZitkK_UpiDfBDEAuC-R9Jqwnvr4QRLt3Ydzw50I92xOOwFE_ZJiO6a7bUuBzQPR-6xrt1nan7bVzeyj-Q1XF_qQDZJ2_TluYsH0oqvWUXP0gp8N6xlP-zD2A03c1j6UAfIugkwol2WBMR9Zw3"
+                    />
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-text-main">
+                      David Chen
+                    </div>
+                    <div className="text-xs text-text-muted">
+                      VP of Data, FinTech Scale
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-background p-8 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow md:col-span-2 lg:col-span-1">
+                <div className="flex text-amber-400 mb-4">
+                  <span className="material-symbols-outlined">star</span>
+                  <span className="material-symbols-outlined">star</span>
+                  <span className="material-symbols-outlined">star</span>
+                  <span className="material-symbols-outlined">star</span>
+                  <span className="material-symbols-outlined">star</span>
+                </div>
+                <p className="text-text-main font-medium italic mb-6 leading-relaxed">
+                  &quot;Traditional BI tools took days to answer my questions.
+                  FinSight gives me a pulse on our $50B+ volume in real-time.
+                  It&apos;s like having a full analyst team in my pocket.&quot;
+                </p>
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      alt="Risk Officer"
+                      className="h-full w-full object-cover"
+                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuC01b5dFDTflRaXIoYRw-9FbKRKm1KlaU6IPN1MrcVkZ6hOrExeb6FPiqU4QAsB6Ax-6qriSnLYdSkmEJdb7CZ6R00LIku8AAFPavYjaxBEn3xq3Iny6RQ85d7ftioG6d6zd_jEs9-0xPZGeL8PAoCcH1XGXpan_c_dO6AKzpSXVo36H42szLezV4tlYgg08kWCNBFpJc8REJErzM0CUUNK6GxwDsPwa7gklXsnrN7jHULNMR2Xmax7UcS5bjkzLIAhqX7pDTNV"
+                    />
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-text-main">
+                      Marcus Thorne
+                    </div>
+                    <div className="text-xs text-text-muted">
+                      Chief Risk Officer, Nexis Digital
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        {/* Bottom CTA Section */}
+        <section className="py-24 bg-primary relative overflow-hidden">
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,#fff,transparent)] scale-150"></div>
+          </div>
+          <div className="mx-auto max-w-[1280px] px-4 text-center sm:px-6 lg:px-8 relative z-10">
+            <h2 className="text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl mb-6">
+              Ready to lead with clarity?
+            </h2>
+            <p className="text-xl text-indigo-100 mb-10 mx-auto max-w-2xl font-medium">
+              Join 500+ enterprises using FinSight to monitor billions in daily
+              volume.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Link
+                href={session ? "/chat" : "/register"}
+                className="flex items-center justify-center w-full sm:w-auto px-8 py-4 bg-white text-primary font-bold rounded-lg shadow-xl hover:bg-gray-50 transition-all text-lg"
+              >
+                {session ? "Go to Dashboard" : "Start 14-Day Free Trial"}
+              </Link>
+              <a href="#" className="flex items-center justify-center w-full sm:w-auto px-8 py-4 bg-primary-dark text-white font-bold rounded-lg border border-white/20 hover:bg-indigo-900 transition-all text-lg">
+                Talk to Sales
+              </a>
+            </div>
+            <p className="mt-6 text-sm text-indigo-200">
+              No credit card required. SOC2 Type II Compliant.
+            </p>
+          </div>
+        </section>
+      </main>
+      {/* Footer */}
+      <footer className="border-t border-gray-200 dark:border-white/10 bg-surface pt-16 pb-8">
+        <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 gap-8 md:grid-cols-4 lg:grid-cols-5 mb-12">
+            <div className="col-span-2 lg:col-span-2">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex size-6 items-center justify-center rounded bg-primary/10 text-primary">
+                  <span className="material-symbols-outlined text-sm">
+                    analytics
+                  </span>
+                </div>
+                <span className="font-bold text-lg text-text-main">FinSight</span>
+              </div>
+              <p className="text-sm text-text-muted max-w-xs mb-6">
+                Empowering finance teams with AI-driven insights for a smarter,
+                safer financial future.
+              </p>
+              <div className="flex gap-4">
+                <a
+                  className="text-text-muted hover:text-primary transition-colors"
+                  href="#"
+                >
+                  <span className="material-symbols-outlined">flutter_dash</span>
+                </a>
+                <a
+                  className="text-text-muted hover:text-primary transition-colors"
+                  href="#"
+                >
+                  <span className="material-symbols-outlined">work</span>
+                </a>
+                <a
+                  className="text-text-muted hover:text-primary transition-colors"
+                  href="#"
+                >
+                  <span className="material-symbols-outlined">code</span>
+                </a>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-text-main mb-4">
+                Product
+              </h3>
+              <ul className="space-y-3">
+                <li>
+                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                    Features
+                  </a>
+                </li>
+                <li>
+                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                    Integrations
+                  </a>
+                </li>
+                <li>
+                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                    Enterprise
+                  </a>
+                </li>
+                <li>
+                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                    Changelog
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-text-main mb-4">
+                Resources
+              </h3>
+              <ul className="space-y-3">
+                <li>
+                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                    Documentation
+                  </a>
+                </li>
+                <li>
+                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                    API Reference
+                  </a>
+                </li>
+                <li>
+                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                    Blog
+                  </a>
+                </li>
+                <li>
+                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                    Community
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-text-main mb-4">
+                Company
+              </h3>
+              <ul className="space-y-3">
+                <li>
+                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                    About
+                  </a>
+                </li>
+                <li>
+                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                    Careers
+                  </a>
+                </li>
+                <li>
+                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                    Legal
+                  </a>
+                </li>
+                <li>
+                  <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                    Contact
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-gray-100 dark:border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-sm text-text-muted">
+              © 2024 FinSight Analytics, Inc. All rights reserved.
+            </p>
+            <div className="flex gap-6">
+              <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                Privacy Policy
+              </a>
+              <a className="text-sm text-text-muted hover:text-primary transition-colors" href="#">
+                Terms of Service
+              </a>
+            </div>
           </div>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }

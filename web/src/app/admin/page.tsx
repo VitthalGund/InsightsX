@@ -24,7 +24,7 @@ export default function AdminPanel() {
     if (status === "unauthenticated") {
       router.push("/login");
     } else if (status === "authenticated" && session?.user?.role !== "admin") {
-      router.push("/");
+      router.push("/chat");
     } else if (status === "authenticated" && session?.user?.role === "admin") {
       fetchUsers();
     }
@@ -64,30 +64,30 @@ export default function AdminPanel() {
 
   if (loading || status === "loading") {
     return (
-      <div className="min-h-screen bg-[#020617] flex justify-center items-center">
-        <div className="w-8 h-8 rounded-full border-t-2 border-indigo-500 animate-spin"></div>
+      <div className="min-h-screen bg-background flex justify-center items-center transition-colors">
+        <div className="w-8 h-8 rounded-full border-t-2 border-primary animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#020617] p-8 text-white">
+    <div className="min-h-screen bg-background p-8 text-text-main transition-colors">
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-indigo-500/20 rounded-xl border border-indigo-500/30">
-              <Users className="w-6 h-6 text-indigo-400" />
+            <div className="p-3 bg-primary/10 rounded-xl border border-primary/20">
+              <Users className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-linear-to-r from-indigo-400 to-purple-400">
+              <h1 className="text-2xl font-bold text-text-main">
                 Admin Dashboard
               </h1>
-              <p className="text-gray-400 text-sm">Manage user access and approvals for InsightsX</p>
+              <p className="text-text-muted text-sm">Manage user access and approvals for InsightsX</p>
             </div>
           </div>
           
           <div className="flex items-center gap-3">
-            <Link href="/" className="px-4 py-2 flex items-center gap-2 text-sm font-medium bg-[#1e293b] hover:bg-[#334155] border border-white/10 text-white rounded-lg transition-colors">
+            <Link href="/chat" className="px-4 py-2 flex items-center gap-2 text-sm font-medium bg-background hover:bg-gray-200 dark:hover:bg-white/5 border border-gray-200 dark:border-white/10 text-text-main rounded-lg transition-colors">
               <MessageSquare className="w-4 h-4" /> App
             </Link>
             <button
@@ -99,23 +99,23 @@ export default function AdminPanel() {
           </div>
         </div>
 
-        <div className="bg-[#0f172a] rounded-xl border border-white/10 overflow-hidden shadow-2xl">
+        <div className="bg-surface rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden shadow-2xl transition-colors">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-[#1e293b] border-b border-white/5">
-                  <th className="p-4 text-sm font-semibold text-gray-300">User Email</th>
-                  <th className="p-4 text-sm font-semibold text-gray-300">Role</th>
-                  <th className="p-4 text-sm font-semibold text-gray-300">Joined</th>
-                  <th className="p-4 text-sm font-semibold text-gray-300">Status</th>
-                  <th className="p-4 text-sm font-semibold text-gray-300 text-right">Actions</th>
+                <tr className="bg-background border-b border-gray-200 dark:border-white/10 transition-colors">
+                  <th className="p-4 text-sm font-semibold text-text-muted">User Email</th>
+                  <th className="p-4 text-sm font-semibold text-text-muted">Role</th>
+                  <th className="p-4 text-sm font-semibold text-text-muted">Joined</th>
+                  <th className="p-4 text-sm font-semibold text-text-muted">Status</th>
+                  <th className="p-4 text-sm font-semibold text-text-muted text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {users.map((user) => (
-                  <tr key={user._id} className="border-b border-white/5 hover:bg-[#1e293b]/50 transition-colors">
+                  <tr key={user._id} className="border-b border-gray-200 dark:border-white/10 hover:bg-primary/5 transition-colors">
                     <td className="p-4">
-                      <div className="font-medium text-gray-200">{user.email}</div>
+                      <div className="font-medium text-text-main">{user.email}</div>
                     </td>
                     <td className="p-4">
                       <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${
@@ -126,7 +126,7 @@ export default function AdminPanel() {
                         {user.role}
                       </span>
                     </td>
-                    <td className="p-4 text-sm text-gray-400">
+                    <td className="p-4 text-sm text-text-muted">
                       {new Date(user.createdAt).toLocaleDateString()}
                     </td>
                     <td className="p-4">
@@ -160,7 +160,7 @@ export default function AdminPanel() {
                 ))}
                 {users.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-gray-500">
+                    <td colSpan={5} className="p-8 text-center text-text-muted">
                       No users found
                     </td>
                   </tr>

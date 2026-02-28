@@ -26,5 +26,5 @@ export default withAuth(
 
 // Apply middleware protection ONLY to exact secure routes.
 export const config = {
-    matcher: ["/", "/admin/:path*"],
+    matcher: ["/chat", "/admin/:path*"],
 };
