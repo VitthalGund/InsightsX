@@ -144,7 +144,7 @@ export function MermaidDiagram({ code }: { code: string }) {
 
   useEffect(() => {
     const sanitized = sanitizeMermaidCode(debouncedCode);
-    if (!sanitized || sanitized.length < 10) return;
+    if (!sanitized) return;
 
     if (sanitized === prevCodeRef.current) return;
     prevCodeRef.current = sanitized;
@@ -154,7 +154,7 @@ export function MermaidDiagram({ code }: { code: string }) {
     const looksValid = validStarts.some(v => firstWord.startsWith(v));
 
     if (!looksValid) {
-      setError('Unrecognized diagram type');
+      setError(`Unrecognized diagram type: ${firstWord}`);
       return;
     }
 
@@ -168,10 +168,18 @@ export function MermaidDiagram({ code }: { code: string }) {
         document.querySelectorAll('.mermaid-error').forEach(el => el.remove());
 
         const renderPromise = mermaid.render(newId, sanitized);
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Mermaid render timeout')), 5000));
+        
+        let timerId: NodeJS.Timeout;
+        const timeoutPromise = new Promise((_, reject) => {
+          timerId = setTimeout(() => {
+            reject(new Error('Mermaid render timeout (5s)'));
+          }, 5000);
+        });
         
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { svg: rendered } = await Promise.race([renderPromise, timeoutPromise]) as any;
+        clearTimeout(timerId!);
+        
         if (!cancelled) {
           setSvg(rendered);
           setError(null);
@@ -190,7 +198,7 @@ export function MermaidDiagram({ code }: { code: string }) {
 
     render();
     return () => { cancelled = true; };
-  }, [debouncedCode]); // Only trigger render when the debounced code updates
+  }, [debouncedCode]);
 
   // Removed 6-second absolute timeout to allow slow AI generation
 
