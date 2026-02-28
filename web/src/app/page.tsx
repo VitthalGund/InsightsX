@@ -261,11 +261,11 @@ export default function ChatDashboard() {
           </div>
           <div className="flex gap-1 shrink-0">
             <ThemeToggle />
-            {session?.user?.role === 'admin' && (
+            {/* {session?.user?.role === 'admin' && (
               <a href="/admin" className="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 rounded-lg transition-colors border border-transparent hover:border-indigo-100 dark:hover:border-indigo-500/30" title="Admin Dashboard">
                 <ShieldAlert className="w-5 h-5" />
               </a>
-            )}
+            )} */}
             <button
               onClick={() => signOut()}
               className="p-2 text-gray-500 dark:text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/20 dark:hover:text-red-400 rounded-lg transition-colors border border-transparent hover:border-red-100 dark:hover:border-red-500/30"

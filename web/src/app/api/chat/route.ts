@@ -1,6 +1,7 @@
 import { convertToModelMessages, streamText, UIMessage } from 'ai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOllama } from 'ollama-ai-provider-v2';
+import { createOpenAI } from '@ai-sdk/openai';
 import { z } from 'zod';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/[...nextauth]/route";
@@ -8,7 +9,17 @@ import { authOptions } from "../auth/[...nextauth]/route";
 export const maxDuration = 60;
 
 // ─── Provider Configuration ─────────────────────────────────────────
-const LLM_PROVIDER = process.env.LLM_PROVIDER ?? 'gemini';
+const LLM_PROVIDER = process.env.LLM_PROVIDER ?? 'featherless'; // Default to featherless
+
+const FEATHERLESS_API_KEY = process.env.featherlessai;
+const featherless = createOpenAI({
+    apiKey: FEATHERLESS_API_KEY,
+    baseURL: 'https://api.featherless.ai/v1',
+});
+
+const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434';
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'qwen2.5:1.5b';
+
 const GEMINI_API_KEYS = (process.env.GEMINI_API_KEYS ?? '').split(',').map(k => k.trim()).filter(Boolean);
 const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash';
 let geminiKeyIndex = 0;
@@ -18,8 +29,6 @@ function getNextGeminiKey(): string {
     geminiKeyIndex = (geminiKeyIndex + 1) % GEMINI_API_KEYS.length;
     return key;
 }
-const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'qwen2.5:1.5b';
 
 // ─── DATA SCHEMA (for system prompt context) ────────────────────────
 const DATA_SCHEMA = `
@@ -215,9 +224,9 @@ Structure responses with:
 export async function POST(req: Request) {
     try {
         const session = await getServerSession(authOptions);
-        if (!session?.user?.isApproved) {
+        if (!session?.user) {
             return new Response(
-                JSON.stringify({ error: "Unauthorized. Your account is pending admin approval." }),
+                JSON.stringify({ error: "Unauthorized. Please log in first." }),
                 { status: 401, headers: { 'Content-Type': 'application/json' } }
             );
         }
@@ -226,6 +235,14 @@ export async function POST(req: Request) {
         const messages = await convertToModelMessages(uiMessages);
 
         console.log(`[chat] Provider: ${LLM_PROVIDER}, Messages: ${uiMessages.length}`);
+
+        if (LLM_PROVIDER === 'featherless') {
+            const featherlessResult = await handleFeatherless(messages);
+            if (featherlessResult) return featherlessResult;
+
+            console.warn('[chat] Featherless failed, falling back to Gemini');
+            return handleGemini(messages);
+        }
 
         if (LLM_PROVIDER === 'ollama') {
             // Try Ollama first, auto-fallback to Gemini on failure
@@ -242,6 +259,29 @@ export async function POST(req: Request) {
             JSON.stringify({ error: 'Request processing failed', detail: String(err) }),
             { status: 500, headers: { 'Content-Type': 'application/json' } }
         );
+    }
+}
+
+// ─── Provider Implementations ───────────────────────────────────────
+
+async function handleFeatherless(messages: Awaited<ReturnType<typeof convertToModelMessages>>) {
+    try {
+        if (!FEATHERLESS_API_KEY) {
+            console.warn('[featherless] API key missing');
+            return null;
+        }
+
+        const result = streamText({
+            model: featherless('meta-llama/Llama-3.3-70B-Instruct'),
+            system: SYSTEM_PROMPT,
+            messages,
+            tools,
+        });
+        return result.toUIMessageStreamResponse();
+    } catch (err: unknown) {
+        const error = err instanceof Error ? err : new Error(String(err));
+        console.error(`[featherless] Stream error: ${error.message}`);
+        return null;
     }
 }
 

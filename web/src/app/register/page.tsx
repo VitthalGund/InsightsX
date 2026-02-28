@@ -1,17 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Activity, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { Activity, CheckCircle2 } from "lucide-react";
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,9 +34,9 @@ export default function RegisterPage() {
       }
 
       setSuccess(true);
-      setIsAdmin(data.user?.role === "admin");
       setLoading(false);
     } catch (err) {
+      console.error("Registration error:", err);
       setError("An unexpected error occurred");
       setLoading(false);
     }
@@ -56,19 +53,9 @@ export default function RegisterPage() {
           </div>
           <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Registration Successful!</h2>
           
-          {isAdmin ? (
-             <div className="mb-6 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 p-4 rounded-lg">
-                <p className="text-indigo-300 text-sm">You are the first user to register. You have been automatically granted <span className="font-semibold">Admin</span> privileges and approved.</p>
-             </div>
-          ) : (
-             <div className="mb-6 bg-amber-500/10 border border-amber-500/20 p-4 rounded-lg">
-               <div className="flex items-center justify-center gap-2 mb-2">
-                 <ShieldAlert className="w-5 h-5 text-amber-400" />
-                 <h3 className="font-medium text-amber-400">Pending Approval</h3>
-               </div>
-               <p className="text-amber-300/80 text-sm">Your account has been created, but requires an administrator to approve it before you can log in and access the chat.</p>
-             </div>
-          )}
+          <div className="mb-6 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 p-4 rounded-lg">
+            <p className="text-indigo-600 dark:text-indigo-300 text-sm">Your account setup is complete. You can now log in and access the platform.</p>
+          </div>
 
           <Link href="/login" className="inline-block w-full py-3 px-4 bg-gray-100 dark:bg-[#1e293b] hover:bg-gray-200 dark:hover:bg-[#334155] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white rounded-lg font-medium transition-colors">
             Return to Login

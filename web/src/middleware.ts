@@ -15,11 +15,6 @@ export default withAuth(
             return NextResponse.redirect(new URL("/", req.url));
         }
 
-        // Require an admin to explicitly map you to `isApproved` true for access to actual application pages.
-        if (pathname === "/" && !token.isApproved) {
-            return NextResponse.redirect(new URL("/pending", req.url));
-        }
-
         return NextResponse.next();
     },
     {
