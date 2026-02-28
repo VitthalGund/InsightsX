@@ -1,4 +1,6 @@
-import React from 'react';
+"use client";
+
+import React, { useRef, useState } from 'react';
 import {
   BarChart, Bar,
   PieChart, Pie, Cell,
@@ -8,8 +10,10 @@ import {
   ScatterChart, Scatter,
   RadialBarChart, RadialBar,
   ComposedChart,
-  XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid,
+  XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid, LabelList
 } from 'recharts';
+import { DownloadIcon, ImageIcon, ChevronDown, ChevronUp } from 'lucide-react';
+import { toPng } from 'html-to-image';
 
 // ─── Chart Palette ──────────────────────────────────────────────────
 const COLORS = [
@@ -38,7 +42,24 @@ export type GenerativeInsightCardProps = {
   chartType: ChartType;
   dataKeyX?: string;
   dataKeyY?: string;
+  executedQuery?: string;
 };
+
+// ─── Formatting Helpers ─────────────────────────────────────────────
+function getSemanticColor(itemName: string | undefined, defaultColor: string) {
+  if (!itemName) return defaultColor;
+  const normalized = String(itemName).toUpperCase();
+  if (normalized === 'SUCCESS' || normalized === 'COMPLETED') return '#10b981'; // Green
+  if (normalized === 'FAILED' || normalized === 'FRAUD' || normalized === 'TECHNICAL_DECLINE' || normalized === 'DECLINED') return '#ef4444'; // Red
+  return defaultColor;
+}
+
+function formatNumber(value: unknown) {
+  if (typeof value === 'number') {
+    return Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
+  }
+  return String(value);
+}
 
 // ─── Chart Renderer ─────────────────────────────────────────────────
 function RenderChart({
@@ -56,14 +77,15 @@ function RenderChart({
   switch (chartType) {
     case 'bar':
       return (
-        <BarChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
+        <BarChart data={data} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis dataKey={dataKeyX} tick={{ fontSize: 12 }} />
           <YAxis tick={{ fontSize: 12 }} />
           <Tooltip cursor={{ fill: 'rgba(79,70,229,0.06)' }} contentStyle={{ borderRadius: '10px', border: '1px solid #e5e7eb' }} />
           <Bar dataKey={dataKeyY} radius={[6, 6, 0, 0]}>
-            {data.map((_, i) => (
-              <Cell key={i} fill={COLORS[i % COLORS.length]} />
+            <LabelList dataKey={dataKeyY} position="top" formatter={formatNumber} fontSize={11} fill="#6b7280" />
+            {data.map((entry, i) => (
+              <Cell key={i} fill={getSemanticColor(entry[dataKeyX], COLORS[i % COLORS.length])} />
             ))}
           </Bar>
         </BarChart>
@@ -84,8 +106,8 @@ function RenderChart({
             label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
             labelLine={{ stroke: '#94a3b8' }}
           >
-            {data.map((_, i) => (
-              <Cell key={i} fill={COLORS[i % COLORS.length]} />
+            {data.map((entry, i) => (
+              <Cell key={i} fill={getSemanticColor(entry[dataKeyX], COLORS[i % COLORS.length])} />
             ))}
           </Pie>
           <Tooltip contentStyle={{ borderRadius: '10px' }} />
@@ -107,7 +129,9 @@ function RenderChart({
             strokeWidth={2.5}
             dot={{ fill: '#4f46e5', strokeWidth: 2, r: 4 }}
             activeDot={{ r: 6, fill: '#4f46e5' }}
-          />
+          >
+            <LabelList dataKey={dataKeyY} position="top" formatter={formatNumber} fontSize={11} fill="#6b7280" />
+          </Line>
         </LineChart>
       );
 
@@ -159,8 +183,8 @@ function RenderChart({
           <YAxis dataKey={dataKeyY} name={dataKeyY} tick={{ fontSize: 12 }} />
           <Tooltip contentStyle={{ borderRadius: '10px' }} cursor={{ strokeDasharray: '3 3' }} />
           <Scatter data={data} fill="#4f46e5">
-            {data.map((_, i) => (
-              <Cell key={i} fill={COLORS[i % COLORS.length]} />
+            {data.map((entry, i) => (
+              <Cell key={i} fill={getSemanticColor(entry[dataKeyX], COLORS[i % COLORS.length])} />
             ))}
           </Scatter>
         </ScatterChart>
@@ -182,8 +206,8 @@ function RenderChart({
             label={{ position: 'insideStart', fill: '#fff', fontSize: 11 }}
             dataKey={dataKeyY}
           >
-            {data.map((_, i) => (
-              <Cell key={i} fill={COLORS[i % COLORS.length]} />
+            {data.map((entry, i) => (
+              <Cell key={i} fill={getSemanticColor(entry[dataKeyX], COLORS[i % COLORS.length])} />
             ))}
           </RadialBar>
           <Legend
@@ -234,10 +258,41 @@ export function GenerativeInsightCard({
   chartType = 'bar',
   dataKeyX = 'name',
   dataKeyY = 'value',
+  executedQuery,
 }: GenerativeInsightCardProps) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [showSql, setShowSql] = useState(false);
+
+  // ─── Export Features ────────────────────────────────────────────────
+  const handleExportPng = async () => {
+    if (!cardRef.current) return;
+    try {
+      const dataUrl = await toPng(cardRef.current, { cacheBust: true, pixelRatio: 2 });
+      const link = document.createElement('a');
+      link.download = `Insight_${intent.replace(/\s+/g, '_')}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error('Failed to export PNG:', err);
+    }
+  };
+
+  const handleExportCsv = () => {
+    if (!data || data.length === 0) return;
+    const headers = Object.keys(data[0]).join(',');
+    const csvRows = data.map(row => Object.values(row).map(v => `"${v}"`).join(','));
+    const csvString = [headers, ...csvRows].join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = `Data_${intent.replace(/\s+/g, '_')}.csv`;
+    link.href = url;
+    link.click();
+  };
+
   return (
-    <div className="bg-white border text-sm border-gray-200 shadow-sm rounded-xl overflow-hidden font-sans w-full max-w-full my-4">
-      {/* Zone 1: Intent Trace */}
+    <div ref={cardRef} className="bg-white border text-sm border-gray-200 shadow-sm rounded-xl overflow-hidden font-sans w-full max-w-full my-4">
+      {/* Zone 1: Intent Trace & Actions */}
       <div className="bg-indigo-50 border-b border-indigo-100 px-4 py-3 flex items-center justify-between">
         <div className="font-semibold text-indigo-900 flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -245,12 +300,25 @@ export function GenerativeInsightCard({
           </svg>
           {intent}
         </div>
-        <span className="text-xs text-indigo-500 bg-indigo-100 px-2 py-0.5 rounded-full font-medium">
-          {chartType}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-indigo-500 bg-indigo-100 px-2 py-0.5 rounded-full font-medium">
+            {chartType}
+          </span>
+          <button onClick={handleExportPng} className="p-1.5 text-indigo-600 hover:bg-indigo-200 rounded-md transition-colors" title="Export Chart as PNG">
+            <ImageIcon className="w-4 h-4" />
+          </button>
+          <button onClick={handleExportCsv} className="p-1.5 text-indigo-600 hover:bg-indigo-200 rounded-md transition-colors" title="Download Data as CSV">
+            <DownloadIcon className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       <div className="p-4 space-y-5">
+        {/* BIG BLUF NARRATIVE */}
+        <div className="text-lg font-semibold text-gray-900 leading-snug">
+          {narrative}
+        </div>
+
         {/* Zone 2: Filter Badges */}
         {Object.keys(filters).length > 0 && (
           <div className="flex flex-wrap gap-2">
@@ -264,7 +332,7 @@ export function GenerativeInsightCard({
 
         {/* Zone 3: Visualization */}
         {data.length > 0 ? (
-          <div className="h-72 w-full">
+          <div className="h-72 w-full pt-4">
             <ResponsiveContainer width="100%" height="100%">
               <RenderChart chartType={chartType} data={data} dataKeyX={dataKeyX} dataKeyY={dataKeyY} />
             </ResponsiveContainer>
@@ -275,12 +343,28 @@ export function GenerativeInsightCard({
           </div>
         )}
 
-        {/* Zone 4: Narrative Insight */}
-        <div className="bg-gray-50 rounded-lg p-4 border border-gray-100 italic text-gray-700">
-          <span className="opacity-50 inline-block align-top mr-1">&ldquo;</span>
-          {narrative}
-          <span className="opacity-50 inline-block align-top ml-1">&rdquo;</span>
-        </div>
+        {/* Zone 4: Data Lineage Accordion */}
+        {executedQuery && (
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <button 
+              onClick={() => setShowSql(!showSql)}
+              className="flex items-center justify-between w-full text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <div className="flex items-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5V19A9 3 0 0 0 21 19V5"></path><path d="M3 12A9 3 0 0 0 21 12"></path></svg>
+                Data Lineage (Audit SQL)
+              </div>
+              {showSql ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+            {showSql && (
+              <div className="mt-3 bg-gray-900 rounded-lg p-3 overflow-x-auto shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)]">
+                <code className="text-xs font-mono text-green-400 whitespace-pre">
+                  {executedQuery}
+                </code>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

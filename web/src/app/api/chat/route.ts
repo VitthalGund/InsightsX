@@ -272,7 +272,7 @@ async function handleFeatherless(messages: Awaited<ReturnType<typeof convertToMo
         }
 
         const result = streamText({
-            model: featherless('meta-llama/Llama-3.3-70B-Instruct'),
+            model: featherless.chat('deepseek-ai/DeepSeek-V3.2'),
             system: SYSTEM_PROMPT,
             messages,
             tools,

@@ -7,7 +7,7 @@ import { GenerativeInsightCard, type ChartType } from '@/components/GenerativeIn
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { MermaidDiagram } from '@/components/MermaidDiagram';
-import { Send, Loader2, Database, AlertCircle, LogOut, ShieldAlert } from 'lucide-react';
+import { Send, Loader2, Database, AlertCircle, LogOut } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useSession, signOut } from "next-auth/react";
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -21,6 +21,7 @@ interface ChartProps {
 
 interface ToolData extends ChartProps {
   data: Record<string, unknown>[];
+  sql?: string;
 }
 
 export default function ChatDashboard() {
@@ -28,6 +29,9 @@ export default function ChatDashboard() {
   const { db, loading: dbLoading, error: dbError } = useDuckDB();
   const [toolDataStore, setToolDataStore] = useState<Record<string, ToolData>>({});
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
+  const [isToolExecuting, setIsToolExecuting] = useState(false);
 
   const [input, setInput] = useState('');
   const { messages, sendMessage, addToolOutput, status } = useChat({
@@ -36,8 +40,9 @@ export default function ChatDashboard() {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async onToolCall({ toolCall }: { toolCall: any }) {
-      if (!db) return;
-      if (toolCall.dynamic) return;
+      setIsToolExecuting(true);
+      if (!db) { setIsToolExecuting(false); return; }
+      if (toolCall.dynamic) { setIsToolExecuting(false); return; }
 
       const toolName = toolCall.toolName as string;
       const toolCallId = toolCall.toolCallId as string;
@@ -145,7 +150,7 @@ export default function ChatDashboard() {
 
           setToolDataStore(prev => ({
             ...prev,
-            [toolCallId]: { data: rows, ...chartProps }
+            [toolCallId]: { data: rows, ...chartProps, sql: query }
           }));
 
           addToolOutput({
@@ -163,22 +168,34 @@ export default function ChatDashboard() {
         });
       } finally {
         await c.close();
+        setIsToolExecuting(false);
       }
     }
   });
 
-  const isLoading = status === 'submitted' || status === 'streaming';
+  const isLoading = isToolExecuting || status === 'submitted' || status === 'streaming';
 
-  // Auto-scroll on new messages
+  // Smart Auto-scroll: only scroll if the user hasn't manually scrolled up
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isLoading]);
+    if (isAutoScrollEnabled) {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isLoading, isAutoScrollEnabled]);
+
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    // Disable auto-scroll if the user is more than 60px away from the bottom
+    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+    setIsAutoScrollEnabled(isAtBottom);
+  };
 
   const onSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!input.trim() || isLoading) return;
     sendMessage({ text: input });
     setInput('');
+    setIsAutoScrollEnabled(true);
   };
 
   if (dbLoading) {
@@ -230,8 +247,8 @@ export default function ChatDashboard() {
           </div>
         </div>
         <div className="p-6 flex-1 overflow-y-auto">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Architecture</h3>
-          <ul className="space-y-3 text-sm text-gray-600">
+          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Architecture</h3>
+          <ul className="space-y-3 text-sm text-gray-600 dark:text-gray-300">
             {['DuckDB Worker: Active', 'LLM Router: Operational', 'Parquet Source: Loaded'].map(s => (
               <li key={s} className="flex items-start gap-2">
                 <div className="mt-0.5 rounded-full bg-green-100 p-1"><div className="h-1.5 w-1.5 rounded-full bg-green-500" /></div>
@@ -240,13 +257,13 @@ export default function ChatDashboard() {
             ))}
           </ul>
 
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-8 mb-4">Query Examples</h3>
+          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-8 mb-4">Query Examples</h3>
           <div className="space-y-2">
             {EXAMPLES.map((q) => (
               <button
                 key={q}
                 onClick={() => sendMessage({ text: q })}
-                className="text-left w-full text-xs p-2.5 rounded-lg border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-gray-600"
+                className="text-left w-full text-xs p-2.5 rounded-lg border border-gray-200 dark:border-white/10 hover:border-indigo-300 dark:hover:border-indigo-500/30 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors text-gray-600 dark:text-gray-300"
               >
                 {q}
               </button>
@@ -255,8 +272,8 @@ export default function ChatDashboard() {
         </div>
         
         {/* User Profile / Logout */}
-        <div className="p-4 border-t border-gray-100 dark:border-white/10 bg-gray-50 dark:bg-[#1e293b] flex items-center justify-between mt-auto shrink-0 transition-colors">
-          <div className="text-[13px] font-medium text-gray-700 dark:text-gray-300 truncate min-w-0 pr-3">
+        <div className="px-4 pt-4 pb-12 border-t border-gray-100 dark:border-white/10 bg-gray-50 dark:bg-[#1e293b] flex items-center justify-between mt-auto shrink-0 transition-colors relative">
+          <div className="text-[13px] font-medium text-gray-700 dark:text-gray-300 truncate min-w-0 pr-3 z-10">
              {session?.user?.email}
           </div>
           <div className="flex gap-1 shrink-0">
@@ -279,7 +296,11 @@ export default function ChatDashboard() {
 
       {/* Main Chat */}
       <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-[#020617] transition-colors">
-        <div className="flex-1 overflow-y-auto px-8 w-full max-w-4xl mx-auto py-8">
+        <div 
+          className="flex-1 overflow-y-auto px-8 w-full max-w-4xl mx-auto py-8"
+          ref={scrollRef}
+          onScroll={handleScroll}
+        >
           {messages.length === 0 && (
             <div className="h-full flex flex-col items-center justify-center text-gray-400 space-y-4">
               <div className="h-16 w-16 bg-linear-to-tr from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-indigo-900/40 rotate-3">
@@ -398,6 +419,7 @@ export default function ChatDashboard() {
                               dataKeyX={resultData.x}
                               dataKeyY={resultData.y}
                               narrative={resultData.narrative}
+                              executedQuery={resultData.sql}
                             />
                           ) : (
                             <div className="flex items-center gap-2 p-3 bg-amber-50 text-amber-700 rounded-lg text-sm border border-amber-100 w-fit">
@@ -443,7 +465,11 @@ export default function ChatDashboard() {
               disabled={isLoading || !input?.trim()}
               className="absolute right-2 p-2.5 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 disabled:opacity-50 disabled:hover:bg-indigo-600 transition-colors"
             >
-              <Send className="h-4 w-4" />
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </button>
           </form>
           <div className="text-center mt-3 text-xs text-gray-400">

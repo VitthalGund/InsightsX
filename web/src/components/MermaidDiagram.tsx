@@ -34,6 +34,8 @@ function sanitizeMermaidCode(raw: string): string {
   code = code.replace(/<br\s*\/?>/gi, '\n');
   code = code.replace(/<[^>]+>/g, '');
   code = code.replace(/[\u201C\u201D]/g, '"').replace(/[\u2018\u2019]/g, "'");
+  code = code.replace(/[→⟶➔]/g, '-->'); // Fix DeepSeek unicode arrows
+  code = code.replace(/─/g, '-');       // Fix box-drawing characters used as dashes
   code = code.replace(/\n{3,}/g, '\n\n');
   return code.trim();
 }
@@ -158,14 +160,18 @@ export function MermaidDiagram({ code }: { code: string }) {
 
     let cancelled = false;
     const newId = `mermaid-${Date.now()}-${mermaidCounter++}`;
-    initMermaid();
 
     async function render() {
       try {
+        initMermaid();
         document.querySelectorAll('[id^="dmermaid-"]').forEach(el => el.remove());
         document.querySelectorAll('.mermaid-error').forEach(el => el.remove());
 
-        const { svg: rendered } = await mermaid.render(newId, sanitized);
+        const renderPromise = mermaid.render(newId, sanitized);
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Mermaid render timeout')), 5000));
+        
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { svg: rendered } = await Promise.race([renderPromise, timeoutPromise]) as any;
         if (!cancelled) {
           setSvg(rendered);
           setError(null);
@@ -186,14 +192,7 @@ export function MermaidDiagram({ code }: { code: string }) {
     return () => { cancelled = true; };
   }, [debouncedCode]); // Only trigger render when the debounced code updates
 
-  // 6-second absolute timeout that is NOT cleared on every keystroke
-  useEffect(() => {
-    if (svg || error) return;
-    const timer = setTimeout(() => {
-      if (!svg && !error) setError('timeout');
-    }, 6000);
-    return () => clearTimeout(timer);
-  }, [svg, error]);
+  // Removed 6-second absolute timeout to allow slow AI generation
 
   const sanitized = sanitizeMermaidCode(code);
 
