@@ -7,12 +7,13 @@ import { GenerativeInsightCard, type ChartType } from '@/components/GenerativeIn
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { MermaidDiagram } from '@/components/MermaidDiagram';
-import { Send, Loader2, Database, AlertCircle, LogOut, PlusCircle, MessageSquare, Trash2, Pencil } from 'lucide-react';
+import { Send, Loader2, Database, AlertCircle, PlusCircle, MessageSquare, Trash2, Pencil } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback, Suspense, useMemo } from 'react';
-import { useSession, signOut } from "next-auth/react";
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { useSession } from "next-auth/react";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Components } from 'react-markdown';
+import { Navbar } from '@/components/Navbar';
+import { BoardroomReport } from '@/components/BoardroomReport';
 
 interface ChartProps {
   type: ChartType;
@@ -58,7 +59,7 @@ const markdownComponents: Components = {
         </div>
       );
     }
-    return <code className={`${className} break-words`} {...props}>{children}</code>;
+    return <code className={`${className} wrap-break-word`} {...props}>{children}</code>;
   },
   table({ children }) {
     return (
@@ -190,132 +191,120 @@ function ChatDashboardContainer() {
   }
 
   return (
-    <div className="flex h-screen bg-background font-sans transition-colors overflow-hidden">
-      {/* Sidebar */}
-      <div className="w-80 bg-surface border-r border-gray-200 dark:border-white/10 shadow-sm flex flex-col transition-colors z-10 shrink-0">
-        <div className="p-6 border-b border-gray-200 dark:border-white/10 shadow-sm flex flex-col gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-primary mb-2">
-              <Database className="h-5 w-5" />
-              <h1 className="text-lg font-bold tracking-tight text-text-main">InsightsX OLAP</h1>
-            </div>
-            <p className="text-[13px] text-text-muted leading-tight">Zero-latency In-Browser Analytics.</p>
-          </div>
-          <button 
-            onClick={handleCreateNewChat}
-            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary-dark rounded-xl font-medium transition-colors border border-primary/20 text-sm"
-          >
-            <PlusCircle className="w-4 h-4" />
-            New Chat
-          </button>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto p-4 space-y-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full">
-          <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3 px-2">History</h3>
-          {chatHistory.length === 0 && (
-            <p className="text-xs text-text-muted px-2 py-4 italic text-center">No previous chats.</p>
-          )}
-          {chatHistory.map((history) => (
-            <div 
-              key={history._id} 
-              className={`group flex items-center justify-between p-2.5 rounded-lg border transition-colors cursor-pointer ${
-                chatId === history._id 
-                  ? 'bg-primary/10 border-primary/30 text-primary' 
-                  : 'bg-transparent border-transparent hover:bg-gray-100 dark:hover:bg-white/5 text-text-main'
-              }`}
-              onClick={() => {
-                if (chatId !== history._id && editingChatId !== history._id) {
-                  router.push(`/chat?id=${history._id}`);
-                }
-              }}
-            >
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <MessageSquare className="w-4 h-4 shrink-0 opacity-70" />
-                {editingChatId === history._id ? (
-                  <form 
-                    className="flex-1 min-w-0"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleRenameSubmit(history._id, editTitle);
-                    }}
-                  >
-                    <input 
-                      autoFocus
-                      className="w-full bg-background border border-primary/50 text-text-main rounded px-2 py-0.5 text-sm focus:outline-none"
-                      value={editTitle}
-                      onChange={e => setEditTitle(e.target.value)}
-                      onClick={e => e.stopPropagation()}
-                      onBlur={() => handleRenameSubmit(history._id, editTitle)}
-                    />
-                  </form>
-                ) : (
-                  <span className="text-sm truncate pr-2 font-medium">{history.title}</span>
-                )}
+    <div className="flex flex-col h-screen bg-background font-sans transition-colors overflow-hidden">
+      <Navbar />
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <div className="w-80 bg-surface border-r border-gray-200 dark:border-white/10 shadow-sm flex flex-col transition-colors z-10 shrink-0">
+          <div className="p-6 border-b border-gray-200 dark:border-white/10 shadow-sm flex flex-col gap-4">
+            <div>
+              <div className="flex items-center gap-2 text-primary mb-2">
+                <Database className="h-5 w-5" />
+                <h1 className="text-lg font-bold tracking-tight text-text-main">InsightsX OLAP</h1>
               </div>
-              
-              {editingChatId !== history._id && (
-                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-1 shrink-0">
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditTitle(history.title);
-                      setEditingChatId(history._id);
-                    }}
-                    className="p-1.5 text-text-muted hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
-                    title="Rename"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteChat(history._id);
-                    }}
-                    className="p-1.5 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
-                    title="Delete"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
+              <p className="text-[13px] text-text-muted leading-tight">Zero-latency In-Browser Analytics.</p>
             </div>
-          ))}
-        </div>
-        
-        {/* User Profile / Logout */}
-        <div className="px-4 pt-4 pb-12 border-t border-gray-200 dark:border-white/10 bg-surface/80 flex items-center justify-between mt-auto shrink-0 transition-colors relative">
-          <div className="text-[13px] font-medium text-text-main truncate min-w-0 pr-3 z-10">
-             {session?.user?.email}
-          </div>
-          <div className="flex gap-1 shrink-0">
-            <ThemeToggle />
-            <button
-              onClick={() => signOut()}
-              className="p-2 text-text-muted hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-colors border border-transparent hover:border-red-500/30"
-              title="Sign Out"
+            <button 
+              onClick={handleCreateNewChat}
+              className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary-dark rounded-xl font-medium transition-colors border border-primary/20 text-sm"
             >
-              <LogOut className="w-5 h-5" />
+              <PlusCircle className="w-4 h-4" />
+              New Chat
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* Main Chat Workspace */}
-      <div className="flex-1 flex flex-col min-w-0 bg-background transition-colors relative overflow-hidden">
-        {isLoadingChat || !activeChatData ? (
-          <div className="absolute inset-0 flex items-center justify-center text-primary">
-            <Loader2 className="w-8 h-8 animate-spin" />
+          
+          <div className="flex-1 overflow-y-auto p-4 space-y-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full">
+            <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3 px-2">History</h3>
+            {chatHistory.length === 0 && (
+              <p className="text-xs text-text-muted px-2 py-4 italic text-center">No previous chats.</p>
+            )}
+            {chatHistory.map((history) => (
+              <div 
+                key={history._id} 
+                className={`group flex items-center justify-between p-2.5 rounded-lg border transition-colors cursor-pointer ${
+                  chatId === history._id 
+                    ? 'bg-primary/10 border-primary/30 text-primary' 
+                    : 'bg-transparent border-transparent hover:bg-gray-100 dark:hover:bg-white/5 text-text-main'
+                }`}
+                onClick={() => {
+                  if (chatId !== history._id && editingChatId !== history._id) {
+                    router.push(`/chat?id=${history._id}`);
+                  }
+                }}
+              >
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <MessageSquare className="w-4 h-4 shrink-0 opacity-70" />
+                  {editingChatId === history._id ? (
+                    <form 
+                      className="flex-1 min-w-0"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        handleRenameSubmit(history._id, editTitle);
+                      }}
+                    >
+                      <input 
+                        autoFocus
+                        className="w-full bg-background border border-primary/50 text-text-main rounded px-2 py-0.5 text-sm focus:outline-none"
+                        value={editTitle}
+                        onChange={e => setEditTitle(e.target.value)}
+                        onClick={e => e.stopPropagation()}
+                        onBlur={() => handleRenameSubmit(history._id, editTitle)}
+                      />
+                    </form>
+                  ) : (
+                    <span className="text-sm truncate pr-2 font-medium">{history.title}</span>
+                  )}
+                </div>
+                
+                {editingChatId !== history._id && (
+                  <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-1 shrink-0">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditTitle(history.title);
+                        setEditingChatId(history._id);
+                      }}
+                      className="p-1.5 text-text-muted hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
+                      title="Rename"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteChat(history._id);
+                      }}
+                      className="p-1.5 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
-        ) : (
-          <ChatWorkspace 
-            key={chatId || 'new'}
-            chatId={chatId}
-            initialMessages={activeChatData.messages}
-            initialToolDataStore={activeChatData.toolDataStore}
-            db={db}
-            refetchHistory={fetchChats}
-          />
-        )}
+        </div>
+
+        {/* Main Chat Workspace */}
+        <div className="flex-1 flex flex-col min-w-0 bg-background transition-colors relative overflow-hidden">
+          {isLoadingChat || !activeChatData ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-primary space-y-4">
+              <Loader2 className="w-10 h-10 animate-spin" />
+              <p className="text-sm font-medium text-text-muted">Loading secure session...</p>
+            </div>
+          ) : (
+            <ChatWorkspace 
+              key={chatId || 'new'}
+              chatId={chatId}
+              initialMessages={activeChatData.messages}
+              initialToolDataStore={activeChatData.toolDataStore}
+              db={db}
+              refetchHistory={fetchChats}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
@@ -341,12 +330,18 @@ function ChatWorkspace({
   const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
   const [isToolExecuting, setIsToolExecuting] = useState(false);
   const [input, setInput] = useState('');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [activeReport, setActiveReport] = useState<any | null>(null);
   
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [pendingQuery, setPendingQuery] = useState('');
   
   const activeIdRef = useRef<string | null>(chatId);
   const [anomaly, setAnomaly] = useState<{title: string, query: string} | null>(null);
+
+  const searchParams = useSearchParams();
+  const urlQuery = searchParams?.get('q');
+  const hasAutoSubmitted = useRef(false);
 
   useEffect(() => {
     if (!db) return;
@@ -413,7 +408,6 @@ function ChatWorkspace({
     }
   }), []);
 
-  // FIX: Collect all helper functions to bypass strict SDK TypeScript errors dynamically
   const chatHelpers = useChat({
     transport,
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
@@ -625,15 +619,16 @@ function ChatWorkspace({
     }
   });
 
-  const { messages, status } = chatHelpers;
-  
-  // DEBUG LOG
-  console.log('[ChatWorkspace Render Mode] messages.length:', messages.length, 'status:', status, 'isCreatingChat:', isCreatingChat);
+  const { messages, status, setMessages } = chatHelpers;
   const isLoading = isToolExecuting || status === 'submitted' || status === 'streaming' || isCreatingChat;
 
+  // Synchronize AI SDK message state when navigating history items
   useEffect(() => {
     activeIdRef.current = chatId;
-  }, [chatId]);
+    setMessages(initialMessages);
+    setToolDataStore(initialToolDataStore);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatId, initialMessages, initialToolDataStore]);
 
   useEffect(() => {
     if (status === 'ready' || status === 'error') {
@@ -643,7 +638,6 @@ function ChatWorkspace({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, status]);
-
 
   useEffect(() => {
     if (isAutoScrollEnabled) {
@@ -682,7 +676,12 @@ function ChatWorkspace({
          if (data.id) {
            currentChatId = data.id;
            activeIdRef.current = data.id;
-           // window.history.replaceState(null, '', `/chat?id=${data.id}`);
+           
+           // Silently update the URL so the session is preserved on refresh
+           const newUrl = new URL(window.location.href);
+           newUrl.searchParams.set('id', data.id);
+           window.history.replaceState(null, '', newUrl.toString());
+           
            refetchHistory(); 
          }
        } catch(e) { 
@@ -692,17 +691,38 @@ function ChatWorkspace({
        }
     }
     
-    const msgId = Date.now().toString();
-    // Forcefully update the UI immediately to transition away from the landing page
-    const newMsg = { id: msgId, role: 'user', content: textToSubmit, parts: [{ type: 'text', text: textToSubmit }] };
-    chatHelpers.setMessages([...chatHelpers.messages, newMsg as any]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const helpers = chatHelpers as any;
     
-    chatHelpers.sendMessage({ messageId: msgId, text: textToSubmit }).catch(e => {
-        console.error('Failed to send message:', e);
-    });
+    // Fallback logic for dynamic AI SDK versions to completely eliminate React Key collisions
+    if (typeof helpers.append === 'function') {
+        helpers.append({ id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`, role: 'user', content: textToSubmit });
+    } else if (typeof helpers.sendMessage === 'function') {
+        helpers.sendMessage({ text: textToSubmit });
+    } else {
+        console.error("AI SDK method missing. Using manual fallback.");
+    }
     
     setPendingQuery('');
   };
+
+  // URL Query Interceptor (Dashboard Redirects)
+  useEffect(() => {
+    if (urlQuery && !hasAutoSubmitted.current && !isCreatingChat) {
+      hasAutoSubmitted.current = true;
+      
+      // Clean URL without triggering Next.js router re-render which can interrupt state
+      const url = new URL(window.location.href);
+      url.searchParams.delete('q');
+      window.history.replaceState({}, '', url.toString());
+
+      // Add a slight delay to ensure UI has fully painted before triggering the AI workflow
+      setTimeout(() => {
+        onSubmit(undefined, urlQuery);
+      }, 500);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlQuery, isCreatingChat]);
 
   const EXAMPLES = [
     'Show me the distribution of transaction statuses for the 18-25 age group in Maharashtra',
@@ -712,7 +732,7 @@ function ChatWorkspace({
     'Which states have the most UPI transactions?',
     'Show me revenue by merchant category',
     'Which banks have the best success rates?',
-    'Give me a business overview of the UPI data',
+    'Generate an executive boardroom report',
   ];
 
   return (
@@ -722,12 +742,37 @@ function ChatWorkspace({
         ref={scrollRef}
         onScroll={handleScroll}
       >
+        {/* Anomaly Banner */}
+        {anomaly && messages.length === 0 && !isCreatingChat && (
+          <div className="mx-auto max-w-4xl mt-6">
+             <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top-4">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="w-6 h-6 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-[15px]">🚨 Anomaly Detected</h4>
+                    <p className="text-sm opacity-90 mt-0.5">{anomaly.title}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onSubmit(undefined, anomaly.query);
+                  }}
+                  className="text-xs bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors font-medium whitespace-nowrap shadow-sm w-full sm:w-auto"
+                >
+                  Run Diagnostics
+                </button>
+             </div>
+          </div>
+        )}
+
+        {/* Empty State Instructions */}
         {messages.length === 0 && !isCreatingChat && (
-          <div className="h-full flex flex-col items-center justify-center text-text-muted space-y-4">
+          <div className="h-full flex flex-col items-center justify-center text-text-muted space-y-4 mt-12">
             <div className="h-16 w-16 bg-primary/20 rounded-2xl flex items-center justify-center shadow-lg rotate-3">
               <Database className="h-8 w-8 text-primary -rotate-3" />
             </div>
-            <h2 className="text-2xl font-bold text-text-main">InsightsX Analytics</h2>
+            <h2 className="text-2xl font-bold text-text-main">InsightsX Analyst</h2>
             <p className="text-center max-w-md text-text-muted mb-8 text-[15px]">
               Ask anything about your loaded dataset. Get visualizations, business insights, and strategic analysis — all processed locally in your browser.
             </p>
@@ -749,99 +794,112 @@ function ChatWorkspace({
           </div>
         )}
 
-        {messages.map((m) => {
-          // FIX: The silent UI bug. Standard user messages have `content` string, not `parts`.
-           
-          const textContent = m.parts 
-            ? m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('\n')
-            : '';
+        {messages.length > 0 && (
+          <div className="max-w-4xl mx-auto py-8">
+            {messages.map((m) => {
+               
+              const textContent = m.parts 
+                ? m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('\n')
+                : m.content || '';
 
-          // FIX: Standardize tool extractions to support AI SDK v3 / v4 mixed formats 
-          const toolInvocations = ('toolInvocations' in m && m.toolInvocations) ? (m as any).toolInvocations as any[] : [];
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const toolParts = m.parts?.filter((p: any) => (p.type.startsWith('tool-') || p.type === 'dynamic-tool') && 'toolCallId' in p) || [];
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const activeTools: any[] = ((toolInvocations as any[])?.length > 0) ? (toolInvocations as any[]) : (toolParts as any[]);
+              const toolInvocations = ('toolInvocations' in m && m.toolInvocations) ? (m as any).toolInvocations as any[] : [];
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const toolParts = m.parts?.filter((p: any) => (p.type.startsWith('tool-') || p.type === 'dynamic-tool') && 'toolCallId' in p) || [];
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const activeTools: any[] = ((toolInvocations as any[])?.length > 0) ? (toolInvocations as any[]) : (toolParts as any[]);
 
-          return (
-            <div key={m.id} className={`mb-8 flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`flex gap-4 max-w-[85%] ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                {/* Avatar */}
-                <div className={`shrink-0 flex items-center justify-center h-8 w-8 rounded-full ${m.role === 'user' ? 'bg-surface border border-gray-200 dark:border-white/10 text-text-muted' : 'bg-primary/20 text-primary'}`}>
-                  {m.role === 'user' ? 'U' : <Database className="h-4 w-4" />}
-                </div>
+              return (
+                <div key={m.id} className={`mb-8 flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`flex gap-4 max-w-[85%] ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                    <div className={`shrink-0 flex items-center justify-center h-8 w-8 rounded-full ${m.role === 'user' ? 'bg-surface border border-gray-200 dark:border-white/10 text-text-muted' : 'bg-primary/20 text-primary'}`}>
+                      {m.role === 'user' ? 'U' : <Database className="h-4 w-4" />}
+                    </div>
 
-                {/* Content */}
-                <div className="flex-1 space-y-2 min-w-0">
-                  {textContent && (
-                    <div className={`p-4 rounded-2xl text-[15px] leading-relaxed shadow-sm border ${
-                      m.role === 'user'
-                        ? 'bg-primary text-white rounded-tr-none border-transparent'
-                        : 'bg-surface text-text-main rounded-tl-none border-gray-200 dark:border-white/10'
-                    }`}>
-                      {m.role === 'user' ? (
-                        <div className="wrap-break-word whitespace-pre-wrap">{textContent}</div>
-                      ) : (
-                        <div className="prose prose-sm max-w-none dark:prose-invert break-words prose-headings:text-text-main prose-strong:text-text-main prose-a:text-primary prose-blockquote:border-primary/50 prose-blockquote:text-text-muted prose-code:bg-background prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-primary prose-code:text-xs prose-pre:bg-background prose-pre:text-text-main prose-th:bg-background prose-td:border-gray-200 dark:prose-td:border-white/10 prose-th:border-gray-200 dark:prose-th:border-white/10">
-                          <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            components={markdownComponents}
-                          >
-                            {textContent}
-                          </ReactMarkdown>
+                    <div className="flex-1 space-y-2 min-w-0">
+                      {textContent && (
+                        <div className={`p-4 rounded-2xl text-[15px] leading-relaxed shadow-sm border ${
+                          m.role === 'user'
+                            ? 'bg-primary text-white rounded-tr-none border-transparent'
+                            : 'bg-surface text-text-main rounded-tl-none border-gray-200 dark:border-white/10'
+                        }`}>
+                          {m.role === 'user' ? (
+                            <div className="break-words whitespace-pre-wrap">{textContent}</div>
+                          ) : (
+                            <div className="prose prose-sm max-w-none dark:prose-invert break-words prose-headings:text-text-main prose-strong:text-text-main prose-a:text-primary prose-blockquote:border-primary/50 prose-blockquote:text-text-muted prose-code:bg-background prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-primary prose-code:text-xs prose-pre:bg-background prose-pre:text-text-main prose-th:bg-background prose-td:border-gray-200 dark:prose-td:border-white/10 prose-th:border-gray-200 dark:prose-th:border-white/10">
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={markdownComponents}
+                              >
+                                {textContent}
+                              </ReactMarkdown>
+                            </div>
+                          )}
                         </div>
                       )}
-                    </div>
-                  )}
 
-                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  {(activeTools || []).map((part: any) => {
-                    const toolCallId = part.toolCallId as string;
-                    const resultData = toolDataStore[toolCallId];
-                    const toolName = (part.toolName ? String(part.toolName) : String(part.type).replace('tool-', ''));
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      {(activeTools || []).map((part: any) => {
+                        const toolCallId = part.toolCallId as string;
+                        const resultData = toolDataStore[toolCallId];
+                        const toolName = (part.toolName ? String(part.toolName) : String(part.type).replace('tool-', ''));
 
-                    return (
-                      <div key={toolCallId} className="w-full mt-4">
-                        {part.state === 'input-streaming' || part.state === 'partial-call' ? (
-                          <div className="flex items-center gap-2 p-3 bg-primary/10 text-primary rounded-lg text-sm border border-primary/20 w-fit">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span className="font-medium">Initializing Secure Analytics Engine...</span>
-                            <code className="text-xs bg-primary/20 px-2 py-0.5 rounded opacity-70">
-                              {toolName}(...)
-                            </code>
-                          </div>
-                        ) : resultData ? (
-                          <GenerativeInsightCard
-                            intent={`${toolName.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}`}
-                            filters={Object.fromEntries(
-                              Object.entries((part.args || part.input || {}) as Record<string, unknown>)
-                                .filter(([, v]) => v !== undefined && v !== null && v !== '')
-                                .map(([k, v]) => [k.replace(/_/g, ' '), String(v)])
+                        return (
+                          <div key={toolCallId} className="w-full mt-4">
+                            {part.state === 'input-streaming' || part.state === 'partial-call' ? (
+                              <div className="flex items-center gap-2 p-3 bg-primary/10 text-primary rounded-lg text-sm border border-primary/20 w-fit">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span className="font-medium">Initializing Secure Analytics Engine...</span>
+                                <code className="text-xs bg-primary/20 px-2 py-0.5 rounded opacity-70">
+                                  {toolName}(...)
+                                </code>
+                              </div>
+                            ) : resultData ? (
+                              resultData.type === 'boardroom' ? (
+                                <div className="flex flex-col gap-3 p-5 bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 rounded-xl max-w-sm mt-4">
+                                  <h4 className="font-semibold text-primary/90">Executive Summary Ready</h4>
+                                  <p className="text-sm text-text-muted mb-1">Your comprehensive boardroom report has been generated successfully.</p>
+                                  <button 
+                                    onClick={(e) => { e.preventDefault(); setActiveReport(resultData.data[0]); }}
+                                    className="w-full py-2.5 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                                  >
+                                    View Printable Report
+                                  </button>
+                                </div>
+                              ) : (
+                                <GenerativeInsightCard
+                                  intent={`${toolName.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}`}
+                                  filters={Object.fromEntries(
+                                    Object.entries((part.args || part.input || {}) as Record<string, unknown>)
+                                      .filter(([, v]) => v !== undefined && v !== null && v !== '')
+                                      .map(([k, v]) => [k.replace(/_/g, ' '), String(v)])
+                                  )}
+                                  data={resultData.data}
+                                  chartType={resultData.type}
+                                  dataKeyX={resultData.x}
+                                  dataKeyY={resultData.y}
+                                  narrative={resultData.narrative}
+                                  executedQuery={resultData.sql}
+                                />
+                              )
+                            ) : (
+                              <div className="flex items-center gap-2 p-3 bg-amber-500/10 text-amber-500 rounded-lg text-sm border border-amber-500/20 w-fit">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span>Processing {toolName}...</span>
+                              </div>
                             )}
-                            data={resultData.data}
-                            chartType={resultData.type}
-                            dataKeyX={resultData.x}
-                            dataKeyY={resultData.y}
-                            narrative={resultData.narrative}
-                            executedQuery={resultData.sql}
-                          />
-                        ) : (
-                          <div className="flex items-center gap-2 p-3 bg-amber-500/10 text-amber-500 rounded-lg text-sm border border-amber-500/20 w-fit">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span>Processing {toolName}...</span>
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+        )}
 
         {isCreatingChat && pendingQuery && (
-          <div className="mb-8 flex justify-end">
+          <div className="mb-8 flex justify-end max-w-4xl mx-auto">
             <div className="flex gap-4 max-w-[85%] flex-row-reverse">
               <div className="shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-surface border border-gray-200 dark:border-white/10 text-text-muted">
                 U
@@ -856,20 +914,24 @@ function ChatWorkspace({
         )}
 
         {(isLoading) && (messages[messages.length - 1]?.role === 'user' || isCreatingChat) && (
-          <div className="flex gap-4 max-w-[85%] mt-8">
-            <div className="shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-primary/20 text-primary">
-              <Database className="h-4 w-4" />
-            </div>
-            <div className="flex items-center gap-2 text-text-muted text-sm pb-4">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              {isCreatingChat ? 'Initializing secure session...' : 'Analyzing your query...'}
+          <div className="max-w-4xl mx-auto">
+            <div className="flex gap-4 max-w-[85%] mt-8">
+              <div className="shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-primary/20 text-primary">
+                <Database className="h-4 w-4" />
+              </div>
+              <div className="flex items-center gap-2 text-text-muted text-sm pb-4">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {isCreatingChat ? 'Initializing secure session...' : 'Analyzing your query...'}
+              </div>
             </div>
           </div>
         )}
         <div ref={chatEndRef} />
       </div>
 
-      <div className="p-4 bg-background border-t border-gray-200 dark:border-white/10 pb-8 px-8 max-w-4xl mx-auto w-full transition-colors shrink-0 z-10 bg-linear-to-t from-background via-background to-transparent">
+      {activeReport && <BoardroomReport data={activeReport} onClose={() => setActiveReport(null)} />}
+
+      <div className="p-4 bg-background border-t border-gray-200 dark:border-white/10 pb-8 px-4 sm:px-8 max-w-4xl mx-auto w-full transition-colors shrink-0 z-10 bg-linear-to-t from-background via-background to-transparent">
         <form onSubmit={onSubmit} className="relative flex items-center shadow-lg rounded-full">
           <input
             value={input}
@@ -891,7 +953,7 @@ function ChatWorkspace({
             )}
           </button>
         </form>
-        <div className="text-center mt-3 text-xs text-text-muted">
+        <div className="text-center mt-3 text-xs text-text-muted hidden sm:block">
           AI-powered analytics processed securely in your browser. Zero data leaves your device.
         </div>
       </div>

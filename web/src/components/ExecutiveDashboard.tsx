@@ -113,12 +113,6 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 pt-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Executive Briefing</h2>
-          <p className="text-sm text-slate-500">Real-time pulse of your InsightsX Analytics Engine</p>
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div 
