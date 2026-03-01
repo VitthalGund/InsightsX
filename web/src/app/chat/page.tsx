@@ -7,12 +7,15 @@ import { GenerativeInsightCard, type ChartType } from '@/components/GenerativeIn
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { MermaidDiagram } from '@/components/MermaidDiagram';
-import { Send, Loader2, Database, AlertCircle, LogOut, PlusCircle, MessageSquare, Trash2, Pencil } from 'lucide-react';
+import { Send, Loader2, Database, AlertCircle, LogOut, PlusCircle, MessageSquare, Trash2, Pencil, FileText } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback, Suspense, useMemo } from 'react';
 import { useSession, signOut } from "next-auth/react";
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Components } from 'react-markdown';
+import { Navbar } from '@/components/Navbar';
+import { ExecutiveDashboard } from '@/components/ExecutiveDashboard';
+import { BoardroomReport } from '@/components/BoardroomReport';
 
 interface ChartProps {
   type: ChartType;
@@ -95,6 +98,11 @@ function ChatDashboardContainer() {
   
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
+  
+  // Boardroom Report State
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [reportData, setReportData] = useState<any | null>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const fetchChats = useCallback(async () => {
     if (!session?.user) return;
@@ -190,7 +198,9 @@ function ChatDashboardContainer() {
   }
 
   return (
-    <div className="flex h-screen bg-background font-sans transition-colors overflow-hidden">
+    <div className="flex flex-col h-screen bg-background font-sans transition-colors overflow-hidden">
+      <Navbar />
+      <div className="flex flex-1 overflow-hidden relative">
       {/* Sidebar */}
       <div className="w-80 bg-surface border-r border-gray-200 dark:border-white/10 shadow-sm flex flex-col transition-colors z-10 shrink-0">
         <div className="p-6 border-b border-gray-200 dark:border-white/10 shadow-sm flex flex-col gap-4">
@@ -317,6 +327,9 @@ function ChatDashboardContainer() {
           />
         )}
       </div>
+      
+
+      </div>
     </div>
   );
 }
@@ -345,6 +358,8 @@ function ChatWorkspace({
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [pendingQuery, setPendingQuery] = useState('');
   
+  const [anomalyAlert, setAnomalyAlert] = useState<string | null>(null);
+
   const activeIdRef = useRef<string | null>(chatId);
 
   // Helper for sanitizing SQL strings
@@ -524,6 +539,33 @@ function ChatWorkspace({
 
   const { messages, status } = chatHelpers;
   
+  // Proactive Anomaly Detection
+  useEffect(() => {
+    let isMounted = true;
+    const checkAnomalies = async () => {
+      if (!db || messages.length > 0) return;
+      try {
+        const c = await db.connect();
+        // Check for elevated technical failures in last 24h vs historical (simulated with a simple query)
+        const res = await c.query(`
+          SELECT 
+            CAST(SUM(CASE WHEN transaction_status = 'FAILED' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100 as current_fail_rate
+          FROM transactions
+        `);
+        const failRate = Number(res.get(0)?.current_fail_rate || 0);
+        await c.close();
+        
+        if (isMounted && failRate > 5.0) { // arbitrary threshold for demo
+          setAnomalyAlert(`High Technical Decline Rate Detected: ${failRate.toFixed(1)}%. Click 'Analyze' to investigate.`);
+        }
+      } catch (e) {
+        console.error('Anomaly check failed', e);
+      }
+    };
+    checkAnomalies();
+    return () => { isMounted = false; };
+  }, [db, messages.length]);
+  
   // DEBUG LOG
   console.log('[ChatWorkspace Render Mode] messages.length:', messages.length, 'status:', status, 'isCreatingChat:', isCreatingChat);
   const isLoading = isToolExecuting || status === 'submitted' || status === 'streaming' || isCreatingChat;
@@ -560,6 +602,7 @@ function ChatWorkspace({
     const textToSubmit = overrideInput !== undefined ? overrideInput : input;
     if (!textToSubmit.trim() || isLoading) return;
     
+    setAnomalyAlert(null); // Clear alert on new query
     setInput('');
     setPendingQuery(textToSubmit);
     setIsAutoScrollEnabled(true);
