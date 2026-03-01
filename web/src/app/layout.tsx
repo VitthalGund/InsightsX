@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/providers/ThemeProvider";
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const geistSans = Geist({
@@ -21,7 +22,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "InsightsX UI",
-  description: "AI analytics powered by duckdb and Ollama",
+  description: "Zero-latency AI analytics powered by InsightsX Engine",
 };
 
 export default function RootLayout({
@@ -32,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
       </head>
       <body
         className={`${inter.variable} ${geistSans.variable} ${geistMono.variable} font-sans antialiased bg-background text-text-main transition-colors`}

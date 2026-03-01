@@ -702,7 +702,7 @@ function ChatWorkspace({
                         {part.state === 'input-streaming' || part.state === 'partial-call' ? (
                           <div className="flex items-center gap-2 p-3 bg-primary/10 text-primary rounded-lg text-sm border border-primary/20 w-fit">
                             <Loader2 className="h-4 w-4 animate-spin" />
-                            <span className="font-medium">Querying local DuckDB...</span>
+                            <span className="font-medium">Initializing Secure Analytics Engine...</span>
                             <code className="text-xs bg-primary/20 px-2 py-0.5 rounded opacity-70">
                               {toolName}(...)
                             </code>
