@@ -697,13 +697,11 @@ function ChatWorkspace({
     }
     
     const msgId = Date.now().toString();
+    const newMsg = { id: msgId, role: 'user', content: textToSubmit, parts: [{ type: 'text', text: textToSubmit }] };
+    chatHelpers.setMessages([...chatHelpers.messages, newMsg as any]);
     
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (chatHelpers as any).append({
-        id: msgId,
-        role: 'user',
-        content: textToSubmit
-    }).catch((e: unknown) => {
+    chatHelpers.sendMessage({ id: msgId, role: 'user', content: textToSubmit } as any).catch((e: unknown) => {
         console.error('Failed to send message:', e);
     });
     
