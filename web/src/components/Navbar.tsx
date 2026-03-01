@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, MessageSquare, LogOut } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, LogOut, BrainCircuit } from 'lucide-react'; // Added BrainCircuit
 import { ThemeToggle } from './ThemeToggle';
 import { useSession, signOut } from 'next-auth/react';
 
@@ -49,6 +49,18 @@ export function Navbar() {
                 <MessageSquare className="w-4 h-4" />
                 AI Analyst
               </Link>
+              {/* NEW LINK: Simulations */}
+              <Link 
+                href="/simulations"
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  pathname?.startsWith('/simulations') 
+                    ? 'bg-primary/10 text-primary' 
+                    : 'text-text-muted hover:bg-surface hover:text-text-main'
+                }`}
+              >
+                <BrainCircuit className="w-4 h-4" />
+                ML Simulations
+              </Link>
             </div>
           )}
         </div>
@@ -86,7 +98,6 @@ export function Navbar() {
               </Link>
             </>
           ) : (
-            /* Empty placeholder while loading session to prevent layout shift */
             <div className="w-32 h-9" />
           )}
         </div>
