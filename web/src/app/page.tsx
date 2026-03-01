@@ -1,46 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { useSession } from "next-auth/react";
+import { Navbar } from "@/components/Navbar";
 
 export default function LandingPage() {
   const { data: session } = useSession();
 
   return (
     <div className="relative flex min-h-screen w-full flex-col group/design-root">
-      {/* Navbar */}
-      <header className="sticky top-0 z-50 w-full border-b border-gray-200 dark:border-white/10 bg-surface/80 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <span className="material-symbols-outlined">analytics</span>
-            </div>
-            <h2 className="text-xl font-bold tracking-tight text-text-main">
-              FinSight
-            </h2>
-          </div>
-          <nav className="hidden md:flex items-center gap-8">
-          </nav>
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
-            {!session && (
-              <Link
-                href="/login"
-                className="hidden sm:flex h-9 items-center justify-center rounded-lg px-4 text-sm font-medium text-text-muted hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
-              >
-                Log in
-              </Link>
-            )}
-            <Link
-              href={session ? "/chat" : "/register"}
-              className="flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-sm font-bold text-white shadow-sm hover:bg-primary-dark transition-all focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-            >
-              {session ? "Enter Workspace" : "Launch Analyst"}
-            </Link>
-          </div>
-        </div>
-      </header>
+      {/* Global Universal Navbar */}
+      <Navbar />
+      
       <main className="grow">
         {/* Hero Section */}
         <section className="relative overflow-hidden pt-16 pb-20 lg:pt-24 lg:pb-32">
@@ -155,7 +126,7 @@ export default function LandingPage() {
                       <div className="bg-primary/5 rounded-lg rounded-tr-none p-4 text-sm text-gray-800 dark:text-gray-200 shadow-sm w-full border border-primary/10">
                         <p className="mb-3 font-medium text-primary">
                           Here is the breakdown. I detected a 45% spike in
-                          &quot;Electronics&quot; transactions on September 12th.
+                          "Electronics" transactions on September 12th.
                         </p>
                         {/* Mini Chart Visual */}
                         <div className="h-32 flex items-end justify-between gap-2 px-2 pb-2 border-l border-b border-gray-200 dark:border-white/10">
@@ -401,9 +372,9 @@ export default function LandingPage() {
                   <span className="material-symbols-outlined">star</span>
                 </div>
                 <p className="text-text-main font-medium italic mb-6 leading-relaxed">
-                  &quot;FinSight transformed our risk posture in less than a
+                  "FinSight transformed our risk posture in less than a
                   quarter. The ability to query millions of transactions in
-                  seconds has become an indispensable part of our workflow.&quot;
+                  seconds has become an indispensable part of our workflow."
                 </p>
                 <div className="flex items-center gap-4">
                   <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 overflow-hidden">
@@ -433,9 +404,9 @@ export default function LandingPage() {
                   <span className="material-symbols-outlined">star</span>
                 </div>
                 <p className="text-text-main font-medium italic mb-6 leading-relaxed">
-                  &quot;The explainability feature is the real game-changer. For
+                  "The explainability feature is the real game-changer. For
                   the first time, our audit team actually trusts the AI-generated
-                  insights because they can see the underlying logic.&quot;
+                  insights because they can see the underlying logic."
                 </p>
                 <div className="flex items-center gap-4">
                   <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 overflow-hidden">
@@ -465,9 +436,9 @@ export default function LandingPage() {
                   <span className="material-symbols-outlined">star</span>
                 </div>
                 <p className="text-text-main font-medium italic mb-6 leading-relaxed">
-                  &quot;Traditional BI tools took days to answer my questions.
+                  "Traditional BI tools took days to answer my questions.
                   FinSight gives me a pulse on our $50B+ volume in real-time.
-                  It&apos;s like having a full analyst team in my pocket.&quot;
+                  It's like having a full analyst team in my pocket."
                 </p>
                 <div className="flex items-center gap-4">
                   <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 overflow-hidden">

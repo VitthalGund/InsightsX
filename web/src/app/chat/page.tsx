@@ -13,8 +13,6 @@ import { useSession, signOut } from "next-auth/react";
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Components } from 'react-markdown';
-import { ExecutiveDashboard } from '@/components/ExecutiveDashboard';
-import { BoardroomReport } from '@/components/BoardroomReport';
 
 interface ChartProps {
   type: ChartType;
@@ -343,8 +341,6 @@ function ChatWorkspace({
   const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
   const [isToolExecuting, setIsToolExecuting] = useState(false);
   const [input, setInput] = useState('');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [activeReport, setActiveReport] = useState<any | null>(null);
   
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [pendingQuery, setPendingQuery] = useState('');
@@ -697,11 +693,11 @@ function ChatWorkspace({
     }
     
     const msgId = Date.now().toString();
+    // Forcefully update the UI immediately to transition away from the landing page
     const newMsg = { id: msgId, role: 'user', content: textToSubmit, parts: [{ type: 'text', text: textToSubmit }] };
     chatHelpers.setMessages([...chatHelpers.messages, newMsg as any]);
     
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    chatHelpers.sendMessage({ id: msgId, role: 'user', content: textToSubmit } as any).catch((e: unknown) => {
+    chatHelpers.sendMessage({ messageId: msgId, text: textToSubmit }).catch(e => {
         console.error('Failed to send message:', e);
     });
     
@@ -722,44 +718,38 @@ function ChatWorkspace({
   return (
     <>
       <div 
-        className="flex-1 overflow-y-auto overflow-x-hidden w-full mx-auto pb-8 z-0 relative [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full"
+        className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-8 w-full max-w-4xl mx-auto py-8 z-0 relative [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full"
         ref={scrollRef}
         onScroll={handleScroll}
       >
-        {/** Anomaly Banner **/}
-        {anomaly && messages.length === 0 && !isCreatingChat && (
-          <div className="mx-auto max-w-5xl mt-6 px-4 sm:px-8">
-             <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 p-4 rounded-xl flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-4">
-                <div className="flex items-center gap-3">
-                  <AlertCircle className="w-6 h-6 flex-shrink-0" />
-                  <div>
-                    <h4 className="font-semibold text-[15px]">🚨 Anomaly Detected</h4>
-                    <p className="text-sm opacity-90 mt-0.5">{anomaly.title}</p>
-                  </div>
-                </div>
-                <button 
+        {messages.length === 0 && !isCreatingChat && (
+          <div className="h-full flex flex-col items-center justify-center text-text-muted space-y-4">
+            <div className="h-16 w-16 bg-primary/20 rounded-2xl flex items-center justify-center shadow-lg rotate-3">
+              <Database className="h-8 w-8 text-primary -rotate-3" />
+            </div>
+            <h2 className="text-2xl font-bold text-text-main">InsightsX Analytics</h2>
+            <p className="text-center max-w-md text-text-muted mb-8 text-[15px]">
+              Ask anything about your loaded dataset. Get visualizations, business insights, and strategic analysis — all processed locally in your browser.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl mt-8">
+              {EXAMPLES.map((q) => (
+                <button
+                  key={q}
                   onClick={(e) => {
                     e.preventDefault();
-                    onSubmit(undefined, anomaly.query);
+                    onSubmit(undefined, q);
                   }}
-                  className="text-xs bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors font-medium whitespace-nowrap shadow-sm"
+                  className="text-left w-full text-sm p-3.5 rounded-xl border border-gray-200 dark:border-white/10 hover:border-primary/50 hover:bg-primary/5 transition-all text-text-main shadow-sm hover:shadow"
                 >
-                  Click here for AI Root Cause Analysis
+                  {q}
                 </button>
-             </div>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* Empty State: Executive Dashboard */}
-        {messages.length === 0 && !isCreatingChat && (
-          <div className="h-full w-full px-4 sm:px-8 pb-32">
-             <ExecutiveDashboard onAnalyze={(q) => onSubmit(undefined, q)} />
-          </div>
-        )}
-
-        {messages.length > 0 && (
-          <div className="max-w-4xl mx-auto px-4 sm:px-8 py-8">
-            {messages.map((m) => {
+        {messages.map((m) => {
           // FIX: The silent UI bug. Standard user messages have `content` string, not `parts`.
            
           const textContent = m.parts 
@@ -821,33 +811,20 @@ function ChatWorkspace({
                             </code>
                           </div>
                         ) : resultData ? (
-                          resultData.type === 'boardroom' ? (
-                            <div className="flex flex-col gap-3 p-5 bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 rounded-xl max-w-sm mt-4">
-                              <h4 className="font-semibold text-primary/90">Executive Summary Ready</h4>
-                              <p className="text-sm text-text-muted mb-1">Your comprehensive boardroom report has been generated successfully.</p>
-                              <button 
-                                onClick={(e) => { e.preventDefault(); setActiveReport(resultData.data[0]); }}
-                                className="w-full py-2.5 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
-                              >
-                                View Printable Report
-                              </button>
-                            </div>
-                          ) : (
-                            <GenerativeInsightCard
-                              intent={`${toolName.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}`}
-                              filters={Object.fromEntries(
-                                Object.entries((part.args || part.input || {}) as Record<string, unknown>)
-                                  .filter(([, v]) => v !== undefined && v !== null && v !== '')
-                                  .map(([k, v]) => [k.replace(/_/g, ' '), String(v)])
-                              )}
-                              data={resultData.data}
-                              chartType={resultData.type}
-                              dataKeyX={resultData.x}
-                              dataKeyY={resultData.y}
-                              narrative={resultData.narrative}
-                              executedQuery={resultData.sql}
-                            />
-                          )
+                          <GenerativeInsightCard
+                            intent={`${toolName.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}`}
+                            filters={Object.fromEntries(
+                              Object.entries((part.args || part.input || {}) as Record<string, unknown>)
+                                .filter(([, v]) => v !== undefined && v !== null && v !== '')
+                                .map(([k, v]) => [k.replace(/_/g, ' '), String(v)])
+                            )}
+                            data={resultData.data}
+                            chartType={resultData.type}
+                            dataKeyX={resultData.x}
+                            dataKeyY={resultData.y}
+                            narrative={resultData.narrative}
+                            executedQuery={resultData.sql}
+                          />
                         ) : (
                           <div className="flex items-center gap-2 p-3 bg-amber-500/10 text-amber-500 rounded-lg text-sm border border-amber-500/20 w-fit">
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -862,8 +839,6 @@ function ChatWorkspace({
             </div>
           );
         })}
-        </div>
-        )}
 
         {isCreatingChat && pendingQuery && (
           <div className="mb-8 flex justify-end">
@@ -881,22 +856,18 @@ function ChatWorkspace({
         )}
 
         {(isLoading) && (messages[messages.length - 1]?.role === 'user' || isCreatingChat) && (
-          <div className="max-w-4xl mx-auto px-4 sm:px-8">
-            <div className="flex gap-4 max-w-[85%] mt-8">
-              <div className="shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-primary/20 text-primary">
-                <Database className="h-4 w-4" />
-              </div>
-              <div className="flex items-center gap-2 text-text-muted text-sm pb-4">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {isCreatingChat ? 'Initializing secure session...' : 'Analyzing your query...'}
-              </div>
+          <div className="flex gap-4 max-w-[85%] mt-8">
+            <div className="shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-primary/20 text-primary">
+              <Database className="h-4 w-4" />
+            </div>
+            <div className="flex items-center gap-2 text-text-muted text-sm pb-4">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {isCreatingChat ? 'Initializing secure session...' : 'Analyzing your query...'}
             </div>
           </div>
         )}
         <div ref={chatEndRef} />
       </div>
-
-      {activeReport && <BoardroomReport data={activeReport} onClose={() => setActiveReport(null)} />}
 
       <div className="p-4 bg-background border-t border-gray-200 dark:border-white/10 pb-8 px-8 max-w-4xl mx-auto w-full transition-colors shrink-0 z-10 bg-linear-to-t from-background via-background to-transparent">
         <form onSubmit={onSubmit} className="relative flex items-center shadow-lg rounded-full">
