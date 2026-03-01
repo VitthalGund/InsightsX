@@ -27,10 +27,16 @@ export async function POST(req: Request) {
             );
         }
 
-        const { messages: uiMessages }: { messages: UIMessage[] } = await req.json();
-        const messages = await convertToModelMessages(uiMessages);
+        const json = await req.json();
+        let uiMessages: UIMessage[] = json.messages;
+        if (!Array.isArray(uiMessages)) {
+            console.error('[chat] Provided messages payload is not an array:', json.messages);
+            uiMessages = [];
+        }
 
-        console.log(`[chat] Provider: ${LLM_PROVIDER}, Messages: ${uiMessages.length}`);
+        console.log(`[chat] Payload keys: ${Object.keys(json)}, Provider: ${LLM_PROVIDER}, Messages: ${uiMessages.length}`);
+        console.log(`[chat] Payload messages dump:`, JSON.stringify(uiMessages).slice(0, 1000));
+        const messages = await convertToModelMessages(uiMessages);
 
         if (LLM_PROVIDER === 'featherless') {
             const featherlessResult = await handleFeatherless(messages);
