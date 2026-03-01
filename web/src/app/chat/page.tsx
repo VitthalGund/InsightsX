@@ -697,11 +697,13 @@ function ChatWorkspace({
     }
     
     const msgId = Date.now().toString();
-    // Forcefully update the UI immediately to transition away from the landing page
-    const newMsg = { id: msgId, role: 'user', content: textToSubmit, parts: [{ type: 'text', text: textToSubmit }] };
-    chatHelpers.setMessages([...chatHelpers.messages, newMsg as any]);
     
-    chatHelpers.sendMessage({ messageId: msgId, text: textToSubmit }).catch(e => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (chatHelpers as any).append({
+        id: msgId,
+        role: 'user',
+        content: textToSubmit
+    }).catch((e: unknown) => {
         console.error('Failed to send message:', e);
     });
     

@@ -6,7 +6,7 @@ import { Loader2, TrendingUp, AlertTriangle, ShieldAlert, Map as MapIcon } from 
 import { ComposableMap, Geographies, Geography } from 'react-simple-maps';
 import { scaleLinear } from 'd3-scale';
 
-const INDIA_TOPO_JSON = "https://raw.githubusercontent.com/Subhash9325/GeoJson-Data-of-Indian-States/master/Indian_States";
+const INDIA_TOPO_JSON = "/india_v5.geojson";
 
 interface ExecutiveDashboardProps {
   onAnalyze: (query: string) => void;
@@ -194,18 +194,22 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
                 <ComposableMap
                   projection="geoMercator"
                   projectionConfig={{
-                    scale: 850,
-                    center: [82.5, 23.0] // Center of India
+                    scale: 1000,
+                    center: [80, 22] // Center of India
                   }}
-                  width={800}
-                  height={400}
-                  style={{ width: "100%", height: "100%" }}
+                  className="w-full h-full"
                 >
                   <Geographies geography={INDIA_TOPO_JSON}>
                     {({ geographies }) =>
                       geographies.map((geo) => {
-                        const stateName = geo.properties.ST_NM || geo.properties.name || geo.properties.NAME_1 || "";
-                        const volume = kpis.stateVolumes[stateName] || 0;
+                        const geoName: string = geo.properties.st_nm || geo.properties.NAME_1 || geo.properties.name || "";
+                        const stateEntry = Object.entries(kpis.stateVolumes).find(([st]) => 
+                          geoName.toLowerCase() === st.toLowerCase() ||
+                          geoName.replace(/&/g, "and").toLowerCase() === st.toLowerCase() ||
+                          st.toLowerCase().includes(geoName.toLowerCase())
+                        );
+                        const stateName = stateEntry ? stateEntry[0] : "";
+                        const volume = stateEntry ? stateEntry[1] : 0;
                         const fill = volume > 0 ? colorScale(volume) : "#f1f5f9"; // Default slate-100
                         return (
                           <Geography

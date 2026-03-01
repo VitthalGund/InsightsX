@@ -28,6 +28,7 @@ export type ChartType =
   | 'line'
   | 'area'
   | 'radar'
+  | 'boardroom'
   | 'scatter'
   | 'radialBar'
   | 'composed';
