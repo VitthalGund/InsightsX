@@ -13,6 +13,8 @@ import { useSession, signOut } from "next-auth/react";
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Components } from 'react-markdown';
+import { ExecutiveDashboard } from '@/components/ExecutiveDashboard';
+import { BoardroomReport } from '@/components/BoardroomReport';
 
 interface ChartProps {
   type: ChartType;
@@ -341,11 +343,45 @@ function ChatWorkspace({
   const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
   const [isToolExecuting, setIsToolExecuting] = useState(false);
   const [input, setInput] = useState('');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [activeReport, setActiveReport] = useState<any | null>(null);
   
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [pendingQuery, setPendingQuery] = useState('');
   
   const activeIdRef = useRef<string | null>(chatId);
+  const [anomaly, setAnomaly] = useState<{title: string, query: string} | null>(null);
+
+  useEffect(() => {
+    if (!db) return;
+    let isMounted = true;
+    const checkAnomalies = async () => {
+      try {
+        const c = await db.connect();
+        const res = await c.query(`
+          SELECT sender_bank, 
+                 CAST(SUM(CASE WHEN transaction_status = 'FAILED' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100 as fail_rate 
+          FROM transactions 
+          WHERE sender_bank IS NOT NULL
+          GROUP BY sender_bank 
+          HAVING fail_rate > 10
+          ORDER BY fail_rate DESC 
+          LIMIT 1
+        `);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const firstRow = (res.toArray() as any[])[0];
+        if (isMounted && firstRow) {
+          setAnomaly({
+            title: `Spike in Failure Rates detected for ${firstRow.sender_bank} (${Number(firstRow.fail_rate).toFixed(1)}%)`,
+            query: `Analyze technical decline rates for ${firstRow.sender_bank}. Why are they failing and what is the business impact? Include comparison with average failure rates.`
+          });
+        }
+        await c.close();
+      } catch (e) { console.error("Anomaly Detection Error:", e) }
+    }
+    checkAnomalies();
+    return () => { isMounted = false; }
+  }, [db]);
 
   // Helper for sanitizing SQL strings
   const sanitize = (str: string) => str.replace(/'/g, "''");
@@ -482,6 +518,77 @@ function ChatWorkspace({
             chartProps = { type: 'area', x: 'name', y: 'value', narrative: `Peak usage hours${args.category ? ` for ${args.category}` : ''}${args.state ? ` in ${args.state}` : ''}.` };
             break;
           }
+          case 'simulate_fraud_rule': {
+            const delta = Number(args.stringency_delta) || 0;
+            query = `
+              WITH baselines AS (
+                SELECT 
+                  SUM(fraud_flag) as base_blocked,
+                  CAST(COUNT(*) * 0.02 AS INTEGER) as base_false
+                FROM transactions
+              )
+              SELECT 'Original Blocked Fraud' as name, base_blocked as value FROM baselines
+              UNION ALL
+              SELECT 'Simulated Blocked Fraud (${delta>0?'+':''}${delta}%)' as name, CAST(base_blocked * (1.0 + (${delta} / 100.0)) AS INTEGER) as value FROM baselines
+              UNION ALL
+              SELECT 'Original False Declines' as name, base_false as value FROM baselines
+              UNION ALL
+              SELECT 'Simulated False Declines (${delta>0?'+':''}${delta}%)' as name, CAST(base_false * (1.0 + (${Math.max(0, delta)} / 50.0)) AS INTEGER) as value FROM baselines
+            `;
+            chartProps = { type: 'bar', x: 'name', y: 'value', narrative: `Simulation impact: ${delta}% change in fraud rule stringency.` };
+            break;
+          }
+          case 'simulate_outage': {
+            const partnerName = sanitize(String(args.partner_name ?? ''));
+            const duration = Number(args.duration_hours) || 1;
+            query = `
+              WITH partner_volume AS (
+                SELECT 
+                  sender_bank,
+                  CAST(COUNT(*) / 365.0 AS INTEGER) as daily_avg_tx,
+                  CAST(SUM(amount_inr) / 365.0 AS INTEGER) as daily_avg_inr
+                FROM transactions
+                WHERE LOWER(sender_bank) LIKE LOWER('%${partnerName.toLowerCase()}%') OR LOWER(network_type) LIKE LOWER('%${partnerName.toLowerCase()}%')
+                GROUP BY sender_bank
+                LIMIT 1
+              )
+              SELECT 'Normal Daily Volume (INR)' as name, daily_avg_inr as value FROM partner_volume
+              UNION ALL
+              SELECT 'Estimated Lost Volume (INR)' as name, CAST(daily_avg_inr * (${duration} / 24.0) AS INTEGER) as value FROM partner_volume
+            `;
+            chartProps = { type: 'pie', x: 'name', y: 'value', narrative: `Simulated impact of ${duration} hour outage for ${partnerName}.` };
+            break;
+          }
+          case 'generate_boardroom_report': {
+            query = `
+              WITH metrics AS (
+                SELECT 
+                  SUM(CASE WHEN transaction_status = 'SUCCESS' THEN amount_inr ELSE 0 END) as tpv,
+                  CAST(SUM(CASE WHEN transaction_status = 'FAILED' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100 as decline_rate,
+                  CAST(SUM(fraud_flag) AS FLOAT) / COUNT(*) * 100 as fraudRate,
+                  COUNT(*) as totalTxCount,
+                  SUM(CASE WHEN transaction_status = 'FAILED' THEN 1 ELSE 0 END) as failedTxCount
+                FROM transactions
+              ),
+              top_state AS (
+                SELECT sender_state as state, SUM(amount_inr) as volume 
+                FROM transactions WHERE transaction_status = 'SUCCESS' GROUP BY sender_state ORDER BY volume DESC LIMIT 1
+              ),
+              top_cat AS (
+                SELECT merchant_category as category, SUM(amount_inr) as volume 
+                FROM transactions WHERE transaction_status = 'SUCCESS' GROUP BY merchant_category ORDER BY volume DESC LIMIT 1
+              )
+              SELECT 
+                m.tpv, m.fraudRate, m.totalTxCount, m.failedTxCount,
+                s.state as top_state_name, s.volume as top_state_volume,
+                c.category as top_cat_name, c.volume as top_cat_volume
+              FROM metrics m
+              CROSS JOIN top_state s
+              CROSS JOIN top_cat c
+            `;
+            chartProps = { type: 'boardroom', x: '', y: '', narrative: 'Generated Executive Boardroom Report.' };
+            break;
+          }
         }
 
         if (query) {
@@ -615,38 +722,44 @@ function ChatWorkspace({
   return (
     <>
       <div 
-        className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-8 w-full max-w-4xl mx-auto py-8 z-0 relative [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full"
+        className="flex-1 overflow-y-auto overflow-x-hidden w-full mx-auto pb-8 z-0 relative [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full"
         ref={scrollRef}
         onScroll={handleScroll}
       >
-        {messages.length === 0 && !isCreatingChat && (
-          <div className="h-full flex flex-col items-center justify-center text-text-muted space-y-4">
-            <div className="h-16 w-16 bg-primary/20 rounded-2xl flex items-center justify-center shadow-lg rotate-3">
-              <Database className="h-8 w-8 text-primary -rotate-3" />
-            </div>
-            <h2 className="text-2xl font-bold text-text-main">InsightsX Analytics</h2>
-            <p className="text-center max-w-md text-text-muted mb-8 text-[15px]">
-              Ask anything about your loaded dataset. Get visualizations, business insights, and strategic analysis — all processed locally in your browser.
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl mt-8">
-              {EXAMPLES.map((q) => (
-                <button
-                  key={q}
+        {/** Anomaly Banner **/}
+        {anomaly && messages.length === 0 && !isCreatingChat && (
+          <div className="mx-auto max-w-5xl mt-6 px-4 sm:px-8">
+             <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 p-4 rounded-xl flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-4">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="w-6 h-6 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-[15px]">🚨 Anomaly Detected</h4>
+                    <p className="text-sm opacity-90 mt-0.5">{anomaly.title}</p>
+                  </div>
+                </div>
+                <button 
                   onClick={(e) => {
                     e.preventDefault();
-                    onSubmit(undefined, q);
+                    onSubmit(undefined, anomaly.query);
                   }}
-                  className="text-left w-full text-sm p-3.5 rounded-xl border border-gray-200 dark:border-white/10 hover:border-primary/50 hover:bg-primary/5 transition-all text-text-main shadow-sm hover:shadow"
+                  className="text-xs bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors font-medium whitespace-nowrap shadow-sm"
                 >
-                  {q}
+                  Click here for AI Root Cause Analysis
                 </button>
-              ))}
-            </div>
+             </div>
           </div>
         )}
 
-        {messages.map((m) => {
+        {/* Empty State: Executive Dashboard */}
+        {messages.length === 0 && !isCreatingChat && (
+          <div className="h-full w-full px-4 sm:px-8 pb-32">
+             <ExecutiveDashboard onAnalyze={(q) => onSubmit(undefined, q)} />
+          </div>
+        )}
+
+        {messages.length > 0 && (
+          <div className="max-w-4xl mx-auto px-4 sm:px-8 py-8">
+            {messages.map((m) => {
           // FIX: The silent UI bug. Standard user messages have `content` string, not `parts`.
            
           const textContent = m.parts 
@@ -708,20 +821,33 @@ function ChatWorkspace({
                             </code>
                           </div>
                         ) : resultData ? (
-                          <GenerativeInsightCard
-                            intent={`${toolName.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}`}
-                            filters={Object.fromEntries(
-                              Object.entries((part.args || part.input || {}) as Record<string, unknown>)
-                                .filter(([, v]) => v !== undefined && v !== null && v !== '')
-                                .map(([k, v]) => [k.replace(/_/g, ' '), String(v)])
-                            )}
-                            data={resultData.data}
-                            chartType={resultData.type}
-                            dataKeyX={resultData.x}
-                            dataKeyY={resultData.y}
-                            narrative={resultData.narrative}
-                            executedQuery={resultData.sql}
-                          />
+                          resultData.type === 'boardroom' ? (
+                            <div className="flex flex-col gap-3 p-5 bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 rounded-xl max-w-sm mt-4">
+                              <h4 className="font-semibold text-primary/90">Executive Summary Ready</h4>
+                              <p className="text-sm text-text-muted mb-1">Your comprehensive boardroom report has been generated successfully.</p>
+                              <button 
+                                onClick={(e) => { e.preventDefault(); setActiveReport(resultData.data[0]); }}
+                                className="w-full py-2.5 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                              >
+                                View Printable Report
+                              </button>
+                            </div>
+                          ) : (
+                            <GenerativeInsightCard
+                              intent={`${toolName.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}`}
+                              filters={Object.fromEntries(
+                                Object.entries((part.args || part.input || {}) as Record<string, unknown>)
+                                  .filter(([, v]) => v !== undefined && v !== null && v !== '')
+                                  .map(([k, v]) => [k.replace(/_/g, ' '), String(v)])
+                              )}
+                              data={resultData.data}
+                              chartType={resultData.type}
+                              dataKeyX={resultData.x}
+                              dataKeyY={resultData.y}
+                              narrative={resultData.narrative}
+                              executedQuery={resultData.sql}
+                            />
+                          )
                         ) : (
                           <div className="flex items-center gap-2 p-3 bg-amber-500/10 text-amber-500 rounded-lg text-sm border border-amber-500/20 w-fit">
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -736,6 +862,8 @@ function ChatWorkspace({
             </div>
           );
         })}
+        </div>
+        )}
 
         {isCreatingChat && pendingQuery && (
           <div className="mb-8 flex justify-end">
@@ -753,18 +881,22 @@ function ChatWorkspace({
         )}
 
         {(isLoading) && (messages[messages.length - 1]?.role === 'user' || isCreatingChat) && (
-          <div className="flex gap-4 max-w-[85%] mt-8">
-            <div className="shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-primary/20 text-primary">
-              <Database className="h-4 w-4" />
-            </div>
-            <div className="flex items-center gap-2 text-text-muted text-sm pb-4">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              {isCreatingChat ? 'Initializing secure session...' : 'Analyzing your query...'}
+          <div className="max-w-4xl mx-auto px-4 sm:px-8">
+            <div className="flex gap-4 max-w-[85%] mt-8">
+              <div className="shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-primary/20 text-primary">
+                <Database className="h-4 w-4" />
+              </div>
+              <div className="flex items-center gap-2 text-text-muted text-sm pb-4">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {isCreatingChat ? 'Initializing secure session...' : 'Analyzing your query...'}
+              </div>
             </div>
           </div>
         )}
         <div ref={chatEndRef} />
       </div>
+
+      {activeReport && <BoardroomReport data={activeReport} onClose={() => setActiveReport(null)} />}
 
       <div className="p-4 bg-background border-t border-gray-200 dark:border-white/10 pb-8 px-8 max-w-4xl mx-auto w-full transition-colors shrink-0 z-10 bg-linear-to-t from-background via-background to-transparent">
         <form onSubmit={onSubmit} className="relative flex items-center shadow-lg rounded-full">

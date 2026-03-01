@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import connectToDatabase from "@/lib/mongodb";
 import User from "@/models/User";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "../../auth/[...nextauth]/route";
+import { authOptions } from "../../../auth/[...nextauth]/route";
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
     const session = await getServerSession(authOptions);
@@ -23,7 +23,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         }
 
         return NextResponse.json(user);
-    } catch (error) {
+    } catch {
         return NextResponse.json({ message: "Failed to update user" }, { status: 500 });
     }
 }
