@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useDuckDB } from '@/hooks/useDuckDB';
 import { Loader2, TrendingUp, AlertTriangle, ShieldAlert, Map as MapIcon } from 'lucide-react';
 import { ComposableMap, Geographies, Geography } from 'react-simple-maps';
 import { scaleLinear } from 'd3-scale';
 import { StateAnalysisModal, type StateAnalysisData } from './StateAnalysisModal';
+import { BoardroomReport } from './BoardroomReport';
+import { QuickInsightModal, type InsightData, type InsightType } from './QuickInsightModal';
 
 const INDIA_TOPO_JSON = "/india_v5.geojson";
 const STATE_ANALYSIS_JSON = "/state-analysis.json";
@@ -44,6 +46,15 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
 
   // Modal state
   const [selectedState, setSelectedState] = useState<string | null>(null);
+
+  // Boardroom Report state
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [reportData, setReportData] = useState<any | null>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+
+  // Quick Insight state
+  const [insightData, setInsightData] = useState<InsightData | null>(null);
+  const [insightLoading, setInsightLoading] = useState(false);
 
   // Load geo data
   useEffect(() => {
@@ -113,6 +124,188 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
 
     fetchKPIs();
   }, [db, dbLoading]);
+
+  // ─── Boardroom Report Generation ──────────────────────────────────
+  const generateBoardroomReport = useCallback(async () => {
+    if (!db || isGeneratingReport) return;
+    setIsGeneratingReport(true);
+    try {
+      const conn = await db.connect();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const toRows = (result: any) => {
+        const rows: { name: string; value: number; [k: string]: any }[] = [];
+        for (let i = 0; i < result.numRows; i++) {
+          const row = result.get(i);
+          if (row) {
+            const obj: any = {};
+            for (const [k, v] of Object.entries(row.toJSON ? row.toJSON() : row)) {
+              obj[k] = typeof v === 'bigint' ? Number(v) : v;
+            }
+            rows.push(obj as any);
+          }
+        }
+        return rows;
+      };
+
+      // 1. Core KPIs
+      const kpiRes = await conn.query(`SELECT
+        CAST(COUNT(*) AS INTEGER) as total_txns,
+        CAST(SUM(amount_inr) AS DOUBLE) as total_volume,
+        CAST(AVG(amount_inr) AS DOUBLE) as avg_amount,
+        CAST(SUM(CASE WHEN transaction_status='SUCCESS' THEN 1 ELSE 0 END) AS INTEGER) as success_count,
+        CAST(SUM(CASE WHEN transaction_status='FAILED' THEN 1 ELSE 0 END) AS INTEGER) as failed_count,
+        CAST(SUM(CASE WHEN transaction_status='PENDING' THEN 1 ELSE 0 END) AS INTEGER) as pending_count,
+        CAST(SUM(CASE WHEN transaction_status='REFUNDED' THEN 1 ELSE 0 END) AS INTEGER) as refunded_count,
+        CAST(SUM(CASE WHEN transaction_status='SUCCESS' THEN amount_inr ELSE 0 END) AS DOUBLE) as success_volume,
+        CAST(SUM(fraud_flag) AS INTEGER) as fraud_count,
+        CAST(SUM(fraud_flag) AS FLOAT) / COUNT(*) * 100 as fraud_rate,
+        CAST(SUM(CASE WHEN transaction_status='SUCCESS' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100 as success_rate
+      FROM transactions`);
+      const kpi = kpiRes.get(0);
+
+      // 2. Hourly Volume Trend
+      const hourlyRes = await conn.query(`SELECT CAST(hour_of_day AS VARCHAR) as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions GROUP BY hour_of_day ORDER BY hour_of_day`);
+      const hourlyTrend = toRows(hourlyRes);
+
+      // 3. Daily Pattern
+      const dailyRes = await conn.query(`SELECT day_of_week as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions GROUP BY day_of_week ORDER BY CASE day_of_week WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3 WHEN 'Thursday' THEN 4 WHEN 'Friday' THEN 5 WHEN 'Saturday' THEN 6 WHEN 'Sunday' THEN 7 END`);
+      const dailyPattern = toRows(dailyRes);
+
+      // 4. Top States (full table)
+      const statesRes = await conn.query(`SELECT sender_state as name,
+        CAST(COUNT(*) AS INTEGER) as total,
+        CAST(SUM(amount_inr) AS DOUBLE) as volume,
+        CAST(SUM(CASE WHEN transaction_status='SUCCESS' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100 as success_rate,
+        CAST(SUM(fraud_flag) AS FLOAT) / COUNT(*) * 100 as fraud_rate
+      FROM transactions GROUP BY sender_state ORDER BY volume DESC LIMIT 10`);
+      const topStates = toRows(statesRes);
+
+      // 5. Top Banks
+      const banksRes = await conn.query(`SELECT sender_bank as name,
+        CAST(COUNT(*) AS INTEGER) as total,
+        CAST(SUM(CASE WHEN transaction_status='SUCCESS' THEN 1 ELSE 0 END) AS INTEGER) as success,
+        CAST(SUM(CASE WHEN transaction_status='FAILED' THEN 1 ELSE 0 END) AS INTEGER) as failed,
+        CAST(SUM(CASE WHEN transaction_status='SUCCESS' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100 as success_rate
+      FROM transactions GROUP BY sender_bank ORDER BY total DESC LIMIT 10`);
+      const topBanks = toRows(banksRes);
+
+      // 6. Revenue by Category
+      const revCatRes = await conn.query(`SELECT merchant_category as name,
+        CAST(COUNT(*) AS INTEGER) as txn_count,
+        CAST(SUM(amount_inr) AS DOUBLE) as revenue,
+        CAST(AVG(amount_inr) AS DOUBLE) as avg_ticket
+      FROM transactions WHERE transaction_status='SUCCESS' GROUP BY merchant_category ORDER BY revenue DESC`);
+      const revenueByCategory = toRows(revCatRes);
+
+      // 7. Device Type
+      const deviceRes = await conn.query(`SELECT device_type as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions GROUP BY device_type ORDER BY value DESC`);
+      const devices = toRows(deviceRes);
+
+      // 8. Network Type
+      const networkRes = await conn.query(`SELECT network_type as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions GROUP BY network_type ORDER BY value DESC`);
+      const networks = toRows(networkRes);
+
+      // 9. Age Demographics
+      const demoRes = await conn.query(`SELECT sender_age_group as name,
+        CAST(COUNT(*) AS INTEGER) as total,
+        CAST(AVG(amount_inr) AS DOUBLE) as avg_amount,
+        CAST(SUM(amount_inr) AS DOUBLE) as total_volume
+      FROM transactions GROUP BY sender_age_group ORDER BY total DESC`);
+      const demographics = toRows(demoRes);
+
+      // 10. Transaction Types
+      const txTypeRes = await conn.query(`SELECT transaction_type as name, CAST(COUNT(*) AS INTEGER) as value, CAST(SUM(amount_inr) AS DOUBLE) as volume FROM transactions GROUP BY transaction_type ORDER BY value DESC`);
+      const transactionTypes = toRows(txTypeRes);
+
+      // 11. Fraud by dimension
+      const fraudByCat = await conn.query(`SELECT merchant_category as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE fraud_flag=1 GROUP BY merchant_category ORDER BY value DESC`);
+      const fraudByDevice = await conn.query(`SELECT device_type as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE fraud_flag=1 GROUP BY device_type ORDER BY value DESC`);
+      const fraudByNetwork = await conn.query(`SELECT network_type as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE fraud_flag=1 GROUP BY network_type ORDER BY value DESC`);
+
+      // 12. Status distribution
+      const statusRes = await conn.query(`SELECT transaction_status as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions GROUP BY transaction_status ORDER BY value DESC`);
+      const statusDistribution = toRows(statusRes);
+
+      await conn.close();
+
+      setReportData({
+        kpi: {
+          totalTransactions: Number(kpi?.total_txns || 0),
+          totalVolume: Number(kpi?.total_volume || 0),
+          avgAmount: Number(kpi?.avg_amount || 0),
+          successCount: Number(kpi?.success_count || 0),
+          failedCount: Number(kpi?.failed_count || 0),
+          pendingCount: Number(kpi?.pending_count || 0),
+          refundedCount: Number(kpi?.refunded_count || 0),
+          successVolume: Number(kpi?.success_volume || 0),
+          fraudCount: Number(kpi?.fraud_count || 0),
+          fraudRate: Number(kpi?.fraud_rate || 0),
+          successRate: Number(kpi?.success_rate || 0),
+        },
+        hourlyTrend, dailyPattern, topStates, topBanks,
+        revenueByCategory, devices, networks, demographics,
+        transactionTypes, statusDistribution,
+        fraudByCategory: toRows(fraudByCat),
+        fraudByDevice: toRows(fraudByDevice),
+        fraudByNetwork: toRows(fraudByNetwork),
+      });
+    } catch (err) {
+      console.error('Failed to generate boardroom report:', err);
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  }, [db, isGeneratingReport]);
+
+  // ─── Quick Insight Queries ─────────────────────────────────────────
+  const runInsight = useCallback(async (type: InsightType) => {
+    if (!db) return;
+    setInsightLoading(true);
+    setInsightData(null);
+    try {
+      const conn = await db.connect();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const toRows = (res: any) => {
+        const rows: any[] = [];
+        for (let i = 0; i < res.numRows; i++) {
+          const row = res.get(i);
+          if (row) {
+            const obj: any = {};
+            for (const [k, v] of Object.entries(row.toJSON ? row.toJSON() : row)) {
+              obj[k] = typeof v === 'bigint' ? Number(v) : v;
+            }
+            rows.push(obj);
+          }
+        }
+        return rows;
+      };
+
+      if (type === 'revenue') {
+        const res = await conn.query(`SELECT merchant_category as name, CAST(COUNT(*) AS INTEGER) as txn_count, CAST(SUM(amount_inr) AS DOUBLE) as revenue, CAST(AVG(amount_inr) AS DOUBLE) as avg_ticket FROM transactions WHERE transaction_status='SUCCESS' GROUP BY merchant_category ORDER BY revenue DESC`);
+        setInsightData({ type, title: 'Top Revenue Sectors', revenueByCategory: toRows(res) });
+      } else if (type === 'fraud') {
+        const [byCat, byDev, bySt, summary] = await Promise.all([
+          conn.query(`SELECT merchant_category as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE fraud_flag=1 GROUP BY merchant_category ORDER BY value DESC`),
+          conn.query(`SELECT device_type as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE fraud_flag=1 GROUP BY device_type ORDER BY value DESC`),
+          conn.query(`SELECT sender_state as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE fraud_flag=1 GROUP BY sender_state ORDER BY value DESC`),
+          conn.query(`SELECT CAST(SUM(fraud_flag) AS INTEGER) as total, CAST(SUM(fraud_flag) AS FLOAT)/COUNT(*)*100 as rate FROM transactions`),
+        ]);
+        const s = summary.get(0);
+        setInsightData({ type, title: 'Fraud Hotspot Analysis', fraudByCategory: toRows(byCat), fraudByDevice: toRows(byDev), fraudByState: toRows(bySt), fraudSummary: { total: Number(s?.total || 0), rate: Number(s?.rate || 0) } });
+      } else if (type === 'peak_hours') {
+        const [hourly, peaks, successRate] = await Promise.all([
+          conn.query(`SELECT CAST(hour_of_day AS VARCHAR) as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions GROUP BY hour_of_day ORDER BY hour_of_day`),
+          conn.query(`SELECT CAST(hour_of_day AS VARCHAR) as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions GROUP BY hour_of_day ORDER BY value DESC LIMIT 5`),
+          conn.query(`SELECT CAST(hour_of_day AS VARCHAR) as name, CAST(SUM(CASE WHEN transaction_status='SUCCESS' THEN 1 ELSE 0 END) AS FLOAT)/COUNT(*)*100 as value FROM transactions GROUP BY hour_of_day ORDER BY hour_of_day`),
+        ]);
+        setInsightData({ type, title: 'Peak Hour Trends', hourlyTrend: toRows(hourly), peakHours: toRows(peaks), hourlySuccessRate: toRows(successRate) });
+      }
+      await conn.close();
+    } catch (err) {
+      console.error('Insight query failed:', err);
+    } finally {
+      setInsightLoading(false);
+    }
+  }, [db]);
 
   // ─── Handle map click: instant lookup from pre-loaded JSON ────────
   const handleStateClick = (stateName: string) => {
@@ -276,30 +469,34 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
           <div className="p-6 pt-0 space-y-4">
              <div 
                className="p-3 bg-slate-100/50 dark:bg-slate-800/50 rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-               onClick={() => onAnalyze("Detail the anomaly detection: Have there been any recent network failure spikes?")}
+               onClick={() => runInsight('revenue')}
              >
-               <h4 className="text-sm font-semibold">Network Failures</h4>
-               <p className="text-xs text-slate-500 mt-1">Check for 5G vs 4G failure anomalies.</p>
+               <h4 className="text-sm font-semibold">Top Revenue Sectors</h4>
+               <p className="text-xs text-slate-500 mt-1">Revenue by merchant category with avg. ticket size.</p>
              </div>
              <div 
                className="p-3 bg-slate-100/50 dark:bg-slate-800/50 rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-               onClick={() => onAnalyze("Run the fraud rule stringency simulation. What happens if we tighten rules by 20%?")}
+               onClick={() => runInsight('fraud')}
              >
-               <h4 className="text-sm font-semibold">Fraud Simulation</h4>
-               <p className="text-xs text-slate-500 mt-1">Simulate revenue lost vs fraud prevented.</p>
+               <h4 className="text-sm font-semibold">Fraud Hotspot Analysis</h4>
+               <p className="text-xs text-slate-500 mt-1">Fraud patterns by state, device & category.</p>
              </div>
              <div 
                className="p-3 bg-slate-100/50 dark:bg-slate-800/50 rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-               onClick={() => onAnalyze("Simulate an infrastructure outage of 2 hours for our top banking partner.")}
+               onClick={() => runInsight('peak_hours')}
              >
-               <h4 className="text-sm font-semibold">Outage Impact</h4>
-               <p className="text-xs text-slate-500 mt-1">Test downtime impact on processing.</p>
+               <h4 className="text-sm font-semibold">Peak Hour Trends</h4>
+               <p className="text-xs text-slate-500 mt-1">Hourly volume patterns & success rate by time.</p>
              </div>
              <div 
-               className="p-3 bg-primary text-primary-foreground rounded-lg cursor-pointer hover:brightness-110 transition-all shadow-md mt-6 text-center"
-               onClick={() => onAnalyze("Generate a comprehensive Executive Summary Boardroom Report based on the current data.")}
+               className="p-3 bg-primary text-primary-foreground rounded-lg cursor-pointer hover:brightness-110 transition-all shadow-md mt-6 text-center flex items-center justify-center gap-2"
+               onClick={generateBoardroomReport}
              >
-               <h4 className="text-sm font-medium">Generate Boardroom Report</h4>
+               {isGeneratingReport ? (
+                 <><Loader2 className="w-4 h-4 animate-spin" /><h4 className="text-sm font-medium">Generating...</h4></>
+               ) : (
+                 <h4 className="text-sm font-medium">Generate Boardroom Report</h4>
+               )}
              </div>
           </div>
         </div>
@@ -314,6 +511,23 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
           loading={false}
           summaryLoading={false}
           onClose={() => setSelectedState(null)}
+        />
+      )}
+
+      {/* Boardroom Report Modal */}
+      {reportData && (
+        <BoardroomReport
+          data={reportData}
+          onClose={() => setReportData(null)}
+        />
+      )}
+
+      {/* Quick Insight Modal */}
+      {(insightData || insightLoading) && (
+        <QuickInsightModal
+          data={insightData}
+          loading={insightLoading}
+          onClose={() => { setInsightData(null); setInsightLoading(false); }}
         />
       )}
     </div>
