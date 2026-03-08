@@ -1,17 +1,29 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   Tooltip as RechartsTooltip, ResponsiveContainer, Legend, ComposedChart,
   Area, AreaChart, ReferenceLine, Treemap, Cell, ScatterChart, Scatter, ZAxis, Sankey
 } from 'recharts';
-import { ShieldCheck, TrendingUp, ZapOff, Users, WifiOff, Info, Loader2, SlidersHorizontal, GitBranch, Search } from 'lucide-react';
+import { ShieldCheck, TrendingUp, ZapOff, Users, WifiOff, Info, Loader2, SlidersHorizontal, GitBranch, Search, PlayCircle, X } from 'lucide-react';
 import { useDuckDB } from '@/hooks/useDuckDB';
 
 export default function SimulationsPage() {
+  const [mounted, setMounted] = useState(false);
   const [activeSim, setActiveSim] = useState('approval');
+  const [isVideoPreviewOpen, setIsVideoPreviewOpen] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Deterministic random to prevent Next.js hydration mismatch on server vs client SVG renders
+  const seededRandom = (seed: number) => {
+    const x = Math.sin(seed++) * 10000;
+    return x - Math.floor(x);
+  };
   const { db, loading: dbLoading } = useDuckDB();
 
   // ==========================================
@@ -248,7 +260,9 @@ export default function SimulationsPage() {
         return { month: m, historical: baseHistorical[idx], projected: null };
       } else {
         const lastVal = baseHistorical[baseHistorical.length - 1];
-        const projection = lastVal * Math.pow(multiplier, idx - 5) + (Math.random() * 8 - 4);
+        // Use a deterministic seed based on index and scenario
+        const randomFactor = seededRandom(idx + (scenario === 'Conservative' ? 1 : scenario === 'Aggressive' ? 2 : 0)) * 8 - 4;
+        const projection = lastVal * Math.pow(multiplier, idx - 5) + randomFactor;
         if (idx === 6) return { month: m, historical: null, projected: Math.round(projection), transition: lastVal };
         return { month: m, historical: null, projected: Math.round(projection) };
       }
@@ -303,7 +317,8 @@ export default function SimulationsPage() {
         const isWeekend = d >= 4; // Fri/Sat/Sun
         const isLate = hours[h] >= 20 || hours[h] === 0;
         
-        let riskScore = Math.random() * 20 + 5; // Base noise
+        // Use deterministic random so SSR matches Client
+        let riskScore = seededRandom(d * 100 + hours[h]) * 20 + 5; // Base noise
         if (isWeekend) riskScore += 15;
         if (isLate) riskScore += 25;
         if (isWeekend && isLate) riskScore += marketingBoost * 2; // Marketing boost accelerates late weekend fraud
@@ -375,6 +390,8 @@ export default function SimulationsPage() {
     { id: 'realflow', icon: GitBranch, title: 'Transaction Flow', desc: 'Real data flow visualization', isNew: true },
     { id: 'anomaly', icon: Search, title: 'Anomaly Detection', desc: 'Z-score outlier detection', isNew: true },
   ];
+
+  if (!mounted) return null;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans transition-colors flex flex-col">
@@ -453,9 +470,14 @@ export default function SimulationsPage() {
             {/* SIMULATION 1 RENDER */}
             {activeSim === 'approval' && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="mb-8">
-                  <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Transaction Approval Optimizer</h1>
-                  <p className="text-slate-500 mt-2">Adjust security strictness to find the perfect balance between preventing unauthorized transactions and minimizing false declines for legitimate customers.</p>
+                <div className="mb-8 flex flex-col md:flex-row justify-between items-start gap-4">
+                  <div>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Transaction Approval Optimizer</h1>
+                    <p className="text-slate-500 mt-2">Adjust security strictness to find the perfect balance between preventing unauthorized transactions and minimizing false declines for legitimate customers.</p>
+                  </div>
+                  <button onClick={() => setIsVideoPreviewOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:hover:bg-indigo-800/50 rounded-lg text-sm font-bold transition-colors shrink-0">
+                    <PlayCircle className="w-5 h-5" /> Watch AI Analysis
+                  </button>
                 </div>
                 
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm mb-6">
@@ -519,9 +541,14 @@ export default function SimulationsPage() {
             {/* SIMULATION 2 RENDER */}
             {activeSim === 'forecast' && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="mb-8">
-                  <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Revenue Growth Projection</h1>
-                  <p className="text-slate-500 mt-2">Simulate future transaction volume (TPV) based on differing macroeconomic market conditions over the next two quarters.</p>
+                <div className="mb-8 flex flex-col md:flex-row justify-between items-start gap-4">
+                  <div>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Revenue Growth Projection</h1>
+                    <p className="text-slate-500 mt-2">Simulate future transaction volume (TPV) based on differing macroeconomic market conditions over the next two quarters.</p>
+                  </div>
+                  <button onClick={() => setIsVideoPreviewOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:hover:bg-indigo-800/50 rounded-lg text-sm font-bold transition-colors shrink-0">
+                    <PlayCircle className="w-5 h-5" /> Watch AI Analysis
+                  </button>
                 </div>
                 
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm">
@@ -612,9 +639,14 @@ export default function SimulationsPage() {
             {/* SIMULATION 3 RENDER */}
             {activeSim === 'outage' && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="mb-8">
-                  <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Partner Downtime Impact</h1>
-                  <p className="text-slate-500 mt-2">Evaluate the systemic risk to specific transaction categories if a major banking partner experiences an infrastructure outage.</p>
+                <div className="mb-8 flex flex-col md:flex-row justify-between items-start gap-4">
+                  <div>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Partner Downtime Impact</h1>
+                    <p className="text-slate-500 mt-2">Evaluate the systemic risk to specific transaction categories if a major banking partner experiences an infrastructure outage.</p>
+                  </div>
+                  <button onClick={() => setIsVideoPreviewOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:hover:bg-indigo-800/50 rounded-lg text-sm font-bold transition-colors shrink-0">
+                    <PlayCircle className="w-5 h-5" /> Watch AI Analysis
+                  </button>
                 </div>
                 
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm">
@@ -678,9 +710,14 @@ export default function SimulationsPage() {
             {/* SIMULATION 4 RENDER */}
             {activeSim === 'expansion' && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="mb-8">
-                  <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Velocity & Risk Heatmap</h1>
-                  <p className="text-slate-500 mt-2">A 24x7 spatio-temporal view mapping exact days and times where fraud velocity spikes against normal transaction baselines.</p>
+                <div className="mb-8 flex flex-col md:flex-row justify-between items-start gap-4">
+                  <div>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Velocity & Risk Heatmap</h1>
+                    <p className="text-slate-500 mt-2">A 24x7 spatio-temporal view mapping exact days and times where fraud velocity spikes against normal transaction baselines.</p>
+                  </div>
+                  <button onClick={() => setIsVideoPreviewOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:hover:bg-indigo-800/50 rounded-lg text-sm font-bold transition-colors shrink-0">
+                    <PlayCircle className="w-5 h-5" /> Watch AI Analysis
+                  </button>
                 </div>
                 
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm">
@@ -737,9 +774,14 @@ export default function SimulationsPage() {
             {/* SIMULATION 5 RENDER */}
             {activeSim === 'network' && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="mb-8">
-                  <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Connectivity Stress Test</h1>
-                  <p className="text-slate-500 mt-2">Analyze how widespread cellular network degradation impacts technical decline rates across different connection types.</p>
+                <div className="mb-8 flex flex-col md:flex-row justify-between items-start gap-4">
+                  <div>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Connectivity Stress Test</h1>
+                    <p className="text-slate-500 mt-2">Analyze how widespread cellular network degradation impacts technical decline rates across different connection types.</p>
+                  </div>
+                  <button onClick={() => setIsVideoPreviewOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:hover:bg-indigo-800/50 rounded-lg text-sm font-bold transition-colors shrink-0">
+                    <PlayCircle className="w-5 h-5" /> Watch AI Analysis
+                  </button>
                 </div>
                 
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm">
@@ -780,7 +822,7 @@ export default function SimulationsPage() {
                            )
                         }}
                       >
-                        {/* @ts-ignore */}
+                        { }
                         <RechartsTooltip 
                           contentStyle={{ borderRadius: '8px', backgroundColor: '#1e293b', color: '#fff', border: 'none' }}
                           formatter={(val: any) => [`${val.toLocaleString()} Tx`, 'Flow Volume']}
@@ -1085,6 +1127,35 @@ export default function SimulationsPage() {
           </div>
         </div>
       </div>
+
+      {/* Video Preview Modal */}
+      {isVideoPreviewOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-4xl bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border border-slate-700 transform transition-all">
+            <div className="flex justify-between items-center p-4 border-b border-slate-700 bg-slate-800/50">
+              <h3 className="text-white font-bold flex items-center gap-2">
+                <PlayCircle className="w-5 h-5 text-indigo-400" /> AI Consultant Analysis
+              </h3>
+              <button 
+                onClick={() => setIsVideoPreviewOpen(false)}
+                className="text-slate-400 hover:text-white transition-colors bg-slate-800 hover:bg-slate-700 rounded-full p-2"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="aspect-video bg-black w-full relative">
+              <video 
+                src="/video.mp4" 
+                controls 
+                autoPlay 
+                className="w-full h-full object-contain"
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

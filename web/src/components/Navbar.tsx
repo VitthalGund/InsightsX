@@ -2,13 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, MessageSquare, LogOut, BrainCircuit } from 'lucide-react'; // Added BrainCircuit
+import { LayoutDashboard, MessageSquare, LogOut, BrainCircuit, Code2 } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { useSession, signOut } from 'next-auth/react';
+import { useAnalystMode } from '@/context/AnalystModeContext';
 
 export function Navbar() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
+  const { analystMode, setAnalystMode } = useAnalystMode();
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-gray-200 dark:border-white/10 bg-surface/80 backdrop-blur-md">
@@ -66,6 +68,25 @@ export function Navbar() {
         </div>
         
         <div className="flex items-center gap-4">
+          {/* Analyst Mode Toggle */}
+          {status === 'authenticated' && (
+            <button
+              onClick={() => setAnalystMode(!analystMode)}
+              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                analystMode 
+                  ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-700/50 shadow-sm' 
+                  : 'bg-surface text-text-muted border-gray-200 dark:border-white/10 hover:border-emerald-300 hover:text-emerald-600'
+              }`}
+              title="Toggle Analyst Mode — shows executed SQL queries, execution times, and data lineage"
+            >
+              <Code2 className="w-3.5 h-3.5" />
+              <span>Analyst</span>
+              <div className={`relative w-7 h-4 rounded-full transition-colors ${analystMode ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-transform ${analystMode ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+              </div>
+            </button>
+          )}
+          
           <ThemeToggle />
           
           {status === 'authenticated' ? (
