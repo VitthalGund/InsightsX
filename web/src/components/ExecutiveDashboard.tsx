@@ -5,8 +5,10 @@ import { useDuckDB } from '@/hooks/useDuckDB';
 import { Loader2, TrendingUp, AlertTriangle, ShieldAlert, Map as MapIcon } from 'lucide-react';
 import { ComposableMap, Geographies, Geography } from 'react-simple-maps';
 import { scaleLinear } from 'd3-scale';
+import { StateAnalysisModal, type StateAnalysisData } from './StateAnalysisModal';
 
 const INDIA_TOPO_JSON = "/india_v5.geojson";
+const STATE_ANALYSIS_JSON = "/state-analysis.json";
 
 interface ExecutiveDashboardProps {
   onAnalyze: (query: string) => void;
@@ -18,6 +20,11 @@ interface KPIState {
   fraudFlags: number | null;
   topState: { state: string; volume: number } | null;
   stateVolumes: Record<string, number>;
+}
+
+// Pre-generated analysis data shape (includes aiSummary)
+interface PreGeneratedStateData extends StateAnalysisData {
+  aiSummary: string;
 }
 
 export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
@@ -32,6 +39,13 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
   const [loading, setLoading] = useState(true);
   const [geoData, setGeoData] = useState<any>(null);
 
+  // Pre-loaded state analysis data
+  const [allStateAnalysis, setAllStateAnalysis] = useState<Record<string, PreGeneratedStateData> | null>(null);
+
+  // Modal state
+  const [selectedState, setSelectedState] = useState<string | null>(null);
+
+  // Load geo data
   useEffect(() => {
     fetch(INDIA_TOPO_JSON)
       .then(res => res.json())
@@ -39,6 +53,15 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
       .catch(console.error);
   }, []);
 
+  // Load pre-generated state analysis JSON
+  useEffect(() => {
+    fetch(STATE_ANALYSIS_JSON)
+      .then(res => res.json())
+      .then(data => setAllStateAnalysis(data))
+      .catch(err => console.error("Failed to load state analysis:", err));
+  }, []);
+
+  // Load KPIs from DuckDB
   useEffect(() => {
     async function fetchKPIs() {
       if (!db || dbLoading) return;
@@ -46,11 +69,9 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
         setLoading(true);
         const conn = await db.connect();
 
-        // 1. TPV
         const tpvResult = await conn.query(`SELECT SUM(amount_inr) as tpv FROM transactions WHERE transaction_status = 'SUCCESS'`);
         const tpv = Number(tpvResult.get(0)?.tpv || 0);
 
-        // 2. Decline Rate
         const declineResult = await conn.query(`
           SELECT 
             CAST(SUM(CASE WHEN transaction_status = 'FAILED' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100 as decline_rate 
@@ -58,11 +79,9 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
         `);
         const declineRate = Number(declineResult.get(0)?.decline_rate || 0);
 
-        // 3. Fraud Flags
         const fraudResult = await conn.query(`SELECT SUM(fraud_flag) as fraud_count FROM transactions`);
         const fraudFlags = Number(fraudResult.get(0)?.fraud_count || 0);
 
-        // 4. Top State & State Volumes
         const stateResult = await conn.query(`
           SELECT sender_state, SUM(amount_inr) as volume 
           FROM transactions 
@@ -71,7 +90,6 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
           ORDER BY volume DESC
         `);
         
-         
         const stateVolumes: Record<string, number> = {};
         for (let i = 0; i < stateResult.numRows; i++) {
           const row = stateResult.get(i);
@@ -96,13 +114,36 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
     fetchKPIs();
   }, [db, dbLoading]);
 
-  // Determine color scale for map
+  // ─── Handle map click: instant lookup from pre-loaded JSON ────────
+  const handleStateClick = (stateName: string) => {
+    if (!stateName) return;
+    // Try exact match first, then case-insensitive
+    const key = allStateAnalysis
+      ? Object.keys(allStateAnalysis).find(
+          k => k.toLowerCase() === stateName.toLowerCase()
+        )
+      : null;
+    if (key) {
+      setSelectedState(key);
+    } else {
+      // State not in pre-generated data — still show modal with a message
+      setSelectedState(stateName);
+    }
+  };
+
+  // Get data for the currently selected state
+  const selectedData = selectedState && allStateAnalysis
+    ? allStateAnalysis[selectedState] || null
+    : null;
+  const selectedSummary = selectedData?.aiSummary || null;
+
+  // ─── Color scale ──────────────────────────────────────────────────
   const volumes = Object.values(kpis.stateVolumes);
   const maxVolume = volumes.length > 0 ? Math.max(...volumes) : 1;
   
   const colorScale = scaleLinear<string>()
     .domain([0, maxVolume])
-    .range(["#f0fdf4", "#166534"]); // Light green to dark green
+    .range(["#f0fdf4", "#166534"]);
 
   if (dbLoading || loading) {
     return (
@@ -122,13 +163,11 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 pt-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
 
+      {/* KPI Cards — display only, no click redirect */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div 
-          className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:border-primary/50 transition-colors cursor-pointer group"
-          onClick={() => onAnalyze("Give me a detailed breakdown of our Total Payment Volume (TPV) today.")}
-        >
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
           <div className="flex flex-row items-center justify-between p-6 pb-2">
-            <h3 className="text-sm font-medium text-slate-500 group-hover:text-primary transition-colors">Total Payment Volume</h3>
+            <h3 className="text-sm font-medium text-slate-500">Total Payment Volume</h3>
             <TrendingUp className="w-4 h-4 text-emerald-500" />
           </div>
           <div className="p-6 pt-0">
@@ -137,12 +176,9 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
           </div>
         </div>
 
-        <div 
-          className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:border-primary/50 transition-colors cursor-pointer group"
-          onClick={() => onAnalyze("Run a diagnostic on our current technical decline rates. What is causing failures?")}
-        >
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
           <div className="flex flex-row items-center justify-between p-6 pb-2">
-            <h3 className="text-sm font-medium text-slate-500 group-hover:text-primary transition-colors">Decline Rate</h3>
+            <h3 className="text-sm font-medium text-slate-500">Decline Rate</h3>
             <AlertTriangle className="w-4 h-4 text-amber-500" />
           </div>
           <div className="p-6 pt-0">
@@ -151,13 +187,10 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
           </div>
         </div>
 
-        <div 
-          className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:border-primary/50 transition-colors cursor-pointer group relative overflow-hidden"
-          onClick={() => onAnalyze("Analyze active fraud flags. Which merchants or regions are riskiest?")}
-        >
-          <div className="absolute inset-0 bg-red-500/5 group-hover:bg-red-500/10 transition-colors" />
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm relative overflow-hidden">
+          <div className="absolute inset-0 bg-red-500/5" />
           <div className="flex flex-row items-center justify-between p-6 pb-2 relative z-10">
-            <h3 className="text-sm font-medium text-slate-500 group-hover:text-red-500 transition-colors">Active Fraud Flags</h3>
+            <h3 className="text-sm font-medium text-slate-500">Active Fraud Flags</h3>
             <ShieldAlert className="w-4 h-4 text-red-500" />
           </div>
           <div className="p-6 pt-0 relative z-10">
@@ -166,12 +199,9 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
           </div>
         </div>
 
-        <div 
-          className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:border-primary/50 transition-colors cursor-pointer group"
-          onClick={() => onAnalyze(`Why is ${kpis.topState?.state || 'our top region'} performing so well? Compare it to the bottom states.`)}
-        >
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
           <div className="flex flex-row items-center justify-between p-6 pb-2">
-            <h3 className="text-sm font-medium text-slate-500 group-hover:text-primary transition-colors">Top Performing State</h3>
+            <h3 className="text-sm font-medium text-slate-500">Top Performing State</h3>
             <MapIcon className="w-4 h-4 text-blue-500" />
           </div>
           <div className="p-6 pt-0">
@@ -186,6 +216,7 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Map */}
         <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm lg:col-span-2">
           <div className="flex flex-col space-y-1.5 p-6">
             <h3 className="text-xl font-semibold leading-none tracking-tight">Geospatial Volume Heatmap</h3>
@@ -197,7 +228,7 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
                   projection="geoMercator"
                   projectionConfig={{
                     scale: 1000,
-                    center: [80, 22] // Center of India
+                    center: [80, 22]
                   }}
                   className="w-full h-full"
                 >
@@ -213,7 +244,7 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
                           );
                           const stateName = stateEntry ? stateEntry[0] : "";
                           const volume = stateEntry ? stateEntry[1] : 0;
-                          const fill = volume > 0 ? colorScale(volume) : "#f1f5f9"; // Default slate-100
+                          const fill = volume > 0 ? colorScale(volume) : "#f1f5f9";
                           return (
                             <Geography
                               key={geo.rsmKey || geo.properties.name}
@@ -222,7 +253,9 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
                               stroke="#cbd5e1"
                               strokeWidth={0.5}
                               className="transition-all hover:opacity-80 hover:stroke-primary focus:outline-none cursor-pointer"
-                              onClick={() => onAnalyze(`Analyze transactions in ${stateName || 'this region'}.`)}
+                              onClick={() => {
+                                if (stateName) handleStateClick(stateName);
+                              }}
                               onMouseEnter={() => {}}
                             />
                           );
@@ -235,6 +268,7 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
           </div>
         </div>
         
+        {/* Quick Insights — KEEPS onAnalyze redirect to chat */}
         <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
           <div className="flex flex-col space-y-1.5 p-6">
             <h3 className="text-xl font-semibold leading-none tracking-tight">Quick Insights</h3>
@@ -270,6 +304,18 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
           </div>
         </div>
       </div>
+
+      {/* State Analysis Modal — instant from pre-loaded JSON */}
+      {selectedState && (
+        <StateAnalysisModal
+          stateName={selectedState}
+          data={selectedData}
+          aiSummary={selectedSummary}
+          loading={false}
+          summaryLoading={false}
+          onClose={() => setSelectedState(null)}
+        />
+      )}
     </div>
   );
 }

@@ -134,10 +134,10 @@ export default function SimulationsPage() {
     ];
 
     // Base flows
-    let flow5G_Smart = 8000;
-    let flow4G_Smart = 12000;
-    let flow4G_Feature = 3000;
-    let flowWiFi_Smart = 5000;
+    const flow5G_Smart = 8000;
+    const flow4G_Smart = 12000;
+    const flow4G_Feature = 3000;
+    const flowWiFi_Smart = 5000;
 
     // Apply stress test degradation
     const degradation4G = networkDrop * 0.15; // up to 300% worse
@@ -179,7 +179,7 @@ export default function SimulationsPage() {
       
       <div className="flex flex-1 overflow-hidden h-screen bg-slate-50 dark:bg-[#020617]">
         {/* Sidebar Navigation */}
-        <div className="w-80 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-white/10 flex flex-col pt-20">
+        <div className="w-80 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-white/10 flex flex-col pt-10">
           <div className="p-6">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">ML Simulations</h2>
             <p className="text-sm text-slate-500 mb-6">Test hypotheses and forecast business outcomes using production data models.</p>
@@ -209,7 +209,7 @@ export default function SimulationsPage() {
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 overflow-y-auto no-scrollbar scroll-smooth pt-20">
+        <div className="flex-1 overflow-y-auto no-scrollbar scroll-smooth pt-10">
           <div className="max-w-6xl mx-auto p-8">
             
             {/* KPI Metric Cards */}

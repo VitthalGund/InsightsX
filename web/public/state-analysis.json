@@ -1,0 +1,3612 @@
+{
+  "Andhra Pradesh": {
+    "overview": {
+      "totalTransactions": 20006,
+      "totalAmount": 25952619,
+      "avgAmount": 1297.24,
+      "successRate": 95
+    },
+    "statusDistribution": [
+      {
+        "name": "SUCCESS",
+        "value": 19006
+      },
+      {
+        "name": "FAILED",
+        "value": 1000
+      }
+    ],
+    "transactionTypes": [
+      {
+        "name": "P2P",
+        "value": 9118
+      },
+      {
+        "name": "P2M",
+        "value": 6923
+      },
+      {
+        "name": "Bill Payment",
+        "value": 2947
+      },
+      {
+        "name": "Recharge",
+        "value": 1018
+      }
+    ],
+    "fraud": {
+      "totalFraud": 35,
+      "fraudRate": 0.17,
+      "byCategory": [
+        {
+          "name": "Grocery",
+          "value": 7
+        },
+        {
+          "name": "Shopping",
+          "value": 6
+        },
+        {
+          "name": "Utilities",
+          "value": 5
+        },
+        {
+          "name": "Fuel",
+          "value": 5
+        },
+        {
+          "name": "Entertainment",
+          "value": 3
+        },
+        {
+          "name": "Transport",
+          "value": 3
+        },
+        {
+          "name": "Other",
+          "value": 3
+        },
+        {
+          "name": "Food",
+          "value": 2
+        },
+        {
+          "name": "Education",
+          "value": 1
+        }
+      ]
+    },
+    "devices": [
+      {
+        "name": "Android",
+        "value": 15101
+      },
+      {
+        "name": "iOS",
+        "value": 3890
+      },
+      {
+        "name": "Web",
+        "value": 1015
+      }
+    ],
+    "networks": [
+      {
+        "name": "4G",
+        "value": 12023
+      },
+      {
+        "name": "5G",
+        "value": 4947
+      },
+      {
+        "name": "WiFi",
+        "value": 2030
+      },
+      {
+        "name": "3G",
+        "value": 1006
+      }
+    ],
+    "banks": [
+      {
+        "name": "SBI",
+        "value": 5134
+      },
+      {
+        "name": "HDFC",
+        "value": 2897
+      },
+      {
+        "name": "ICICI",
+        "value": 2321
+      },
+      {
+        "name": "Yes Bank",
+        "value": 2078
+      },
+      {
+        "name": "PNB",
+        "value": 2010
+      },
+      {
+        "name": "Axis",
+        "value": 1993
+      },
+      {
+        "name": "IndusInd",
+        "value": 1982
+      },
+      {
+        "name": "Kotak",
+        "value": 1591
+      }
+    ],
+    "hourlyTrend": [
+      {
+        "name": "0",
+        "value": 272
+      },
+      {
+        "name": "1",
+        "value": 180
+      },
+      {
+        "name": "2",
+        "value": 124
+      },
+      {
+        "name": "3",
+        "value": 110
+      },
+      {
+        "name": "4",
+        "value": 100
+      },
+      {
+        "name": "5",
+        "value": 150
+      },
+      {
+        "name": "6",
+        "value": 279
+      },
+      {
+        "name": "7",
+        "value": 434
+      },
+      {
+        "name": "8",
+        "value": 637
+      },
+      {
+        "name": "9",
+        "value": 824
+      },
+      {
+        "name": "10",
+        "value": 1082
+      },
+      {
+        "name": "11",
+        "value": 1263
+      },
+      {
+        "name": "12",
+        "value": 1389
+      },
+      {
+        "name": "13",
+        "value": 1167
+      },
+      {
+        "name": "14",
+        "value": 929
+      },
+      {
+        "name": "15",
+        "value": 1029
+      },
+      {
+        "name": "16",
+        "value": 1091
+      },
+      {
+        "name": "17",
+        "value": 1495
+      },
+      {
+        "name": "18",
+        "value": 1645
+      },
+      {
+        "name": "19",
+        "value": 1724
+      },
+      {
+        "name": "20",
+        "value": 1530
+      },
+      {
+        "name": "21",
+        "value": 1314
+      },
+      {
+        "name": "22",
+        "value": 759
+      },
+      {
+        "name": "23",
+        "value": 479
+      }
+    ],
+    "dailyPattern": [
+      {
+        "name": "Monday",
+        "value": 2933
+      },
+      {
+        "name": "Tuesday",
+        "value": 2901
+      },
+      {
+        "name": "Wednesday",
+        "value": 2880
+      },
+      {
+        "name": "Thursday",
+        "value": 2772
+      },
+      {
+        "name": "Friday",
+        "value": 2803
+      },
+      {
+        "name": "Saturday",
+        "value": 2803
+      },
+      {
+        "name": "Sunday",
+        "value": 2914
+      }
+    ],
+    "demographics": [
+      {
+        "name": "26-35",
+        "value": 6957
+      },
+      {
+        "name": "36-45",
+        "value": 5003
+      },
+      {
+        "name": "18-25",
+        "value": 4991
+      },
+      {
+        "name": "46-55",
+        "value": 1998
+      },
+      {
+        "name": "56+",
+        "value": 1057
+      }
+    ],
+    "revenueByCategory": [
+      {
+        "name": "Shopping",
+        "value": 5958589
+      },
+      {
+        "name": "Grocery",
+        "value": 4636765
+      },
+      {
+        "name": "Utilities",
+        "value": 4199137
+      },
+      {
+        "name": "Education",
+        "value": 3068792
+      },
+      {
+        "name": "Fuel",
+        "value": 3033013
+      },
+      {
+        "name": "Other",
+        "value": 1722155
+      },
+      {
+        "name": "Food",
+        "value": 1567842
+      },
+      {
+        "name": "Entertainment",
+        "value": 676367
+      },
+      {
+        "name": "Healthcare",
+        "value": 571316
+      },
+      {
+        "name": "Transport",
+        "value": 518643
+      }
+    ],
+    "peakHours": [
+      {
+        "name": "19",
+        "value": 1724
+      },
+      {
+        "name": "18",
+        "value": 1645
+      },
+      {
+        "name": "20",
+        "value": 1530
+      },
+      {
+        "name": "17",
+        "value": 1495
+      },
+      {
+        "name": "12",
+        "value": 1389
+      }
+    ],
+    "aiSummary": "Andhra Pradesh exhibits strong UPI adoption and performance, recording over 20,0"
+  },
+  "Delhi": {
+    "overview": {
+      "totalTransactions": 24870,
+      "totalAmount": 32689865,
+      "avgAmount": 1314.43,
+      "successRate": 95.03
+    },
+    "statusDistribution": [
+      {
+        "name": "SUCCESS",
+        "value": 23633
+      },
+      {
+        "name": "FAILED",
+        "value": 1237
+      }
+    ],
+    "transactionTypes": [
+      {
+        "name": "P2P",
+        "value": 11223
+      },
+      {
+        "name": "P2M",
+        "value": 8729
+      },
+      {
+        "name": "Bill Payment",
+        "value": 3720
+      },
+      {
+        "name": "Recharge",
+        "value": 1198
+      }
+    ],
+    "fraud": {
+      "totalFraud": 50,
+      "fraudRate": 0.2,
+      "byCategory": [
+        {
+          "name": "Food",
+          "value": 7
+        },
+        {
+          "name": "Grocery",
+          "value": 7
+        },
+        {
+          "name": "Other",
+          "value": 6
+        },
+        {
+          "name": "Fuel",
+          "value": 6
+        },
+        {
+          "name": "Shopping",
+          "value": 6
+        },
+        {
+          "name": "Entertainment",
+          "value": 6
+        },
+        {
+          "name": "Healthcare",
+          "value": 4
+        },
+        {
+          "name": "Utilities",
+          "value": 4
+        },
+        {
+          "name": "Transport",
+          "value": 3
+        },
+        {
+          "name": "Education",
+          "value": 1
+        }
+      ]
+    },
+    "devices": [
+      {
+        "name": "Android",
+        "value": 18769
+      },
+      {
+        "name": "iOS",
+        "value": 4874
+      },
+      {
+        "name": "Web",
+        "value": 1227
+      }
+    ],
+    "networks": [
+      {
+        "name": "4G",
+        "value": 14926
+      },
+      {
+        "name": "5G",
+        "value": 6260
+      },
+      {
+        "name": "WiFi",
+        "value": 2500
+      },
+      {
+        "name": "3G",
+        "value": 1184
+      }
+    ],
+    "banks": [
+      {
+        "name": "SBI",
+        "value": 6158
+      },
+      {
+        "name": "HDFC",
+        "value": 3829
+      },
+      {
+        "name": "ICICI",
+        "value": 3044
+      },
+      {
+        "name": "Yes Bank",
+        "value": 2514
+      },
+      {
+        "name": "PNB",
+        "value": 2474
+      },
+      {
+        "name": "Axis",
+        "value": 2460
+      },
+      {
+        "name": "IndusInd",
+        "value": 2430
+      },
+      {
+        "name": "Kotak",
+        "value": 1961
+      }
+    ],
+    "hourlyTrend": [
+      {
+        "name": "0",
+        "value": 328
+      },
+      {
+        "name": "1",
+        "value": 218
+      },
+      {
+        "name": "2",
+        "value": 174
+      },
+      {
+        "name": "3",
+        "value": 143
+      },
+      {
+        "name": "4",
+        "value": 116
+      },
+      {
+        "name": "5",
+        "value": 163
+      },
+      {
+        "name": "6",
+        "value": 314
+      },
+      {
+        "name": "7",
+        "value": 579
+      },
+      {
+        "name": "8",
+        "value": 846
+      },
+      {
+        "name": "9",
+        "value": 1030
+      },
+      {
+        "name": "10",
+        "value": 1339
+      },
+      {
+        "name": "11",
+        "value": 1640
+      },
+      {
+        "name": "12",
+        "value": 1753
+      },
+      {
+        "name": "13",
+        "value": 1477
+      },
+      {
+        "name": "14",
+        "value": 1205
+      },
+      {
+        "name": "15",
+        "value": 1297
+      },
+      {
+        "name": "16",
+        "value": 1416
+      },
+      {
+        "name": "17",
+        "value": 1768
+      },
+      {
+        "name": "18",
+        "value": 2025
+      },
+      {
+        "name": "19",
+        "value": 2107
+      },
+      {
+        "name": "20",
+        "value": 1848
+      },
+      {
+        "name": "21",
+        "value": 1625
+      },
+      {
+        "name": "22",
+        "value": 927
+      },
+      {
+        "name": "23",
+        "value": 532
+      }
+    ],
+    "dailyPattern": [
+      {
+        "name": "Monday",
+        "value": 3537
+      },
+      {
+        "name": "Tuesday",
+        "value": 3530
+      },
+      {
+        "name": "Wednesday",
+        "value": 3539
+      },
+      {
+        "name": "Thursday",
+        "value": 3582
+      },
+      {
+        "name": "Friday",
+        "value": 3562
+      },
+      {
+        "name": "Saturday",
+        "value": 3537
+      },
+      {
+        "name": "Sunday",
+        "value": 3583
+      }
+    ],
+    "demographics": [
+      {
+        "name": "26-35",
+        "value": 8658
+      },
+      {
+        "name": "36-45",
+        "value": 6326
+      },
+      {
+        "name": "18-25",
+        "value": 6170
+      },
+      {
+        "name": "46-55",
+        "value": 2428
+      },
+      {
+        "name": "56+",
+        "value": 1288
+      }
+    ],
+    "revenueByCategory": [
+      {
+        "name": "Shopping",
+        "value": 7657234
+      },
+      {
+        "name": "Grocery",
+        "value": 5677647
+      },
+      {
+        "name": "Utilities",
+        "value": 5207383
+      },
+      {
+        "name": "Education",
+        "value": 3945974
+      },
+      {
+        "name": "Fuel",
+        "value": 3905782
+      },
+      {
+        "name": "Other",
+        "value": 2136748
+      },
+      {
+        "name": "Food",
+        "value": 2001998
+      },
+      {
+        "name": "Entertainment",
+        "value": 865144
+      },
+      {
+        "name": "Healthcare",
+        "value": 670830
+      },
+      {
+        "name": "Transport",
+        "value": 621125
+      }
+    ],
+    "peakHours": [
+      {
+        "name": "19",
+        "value": 2107
+      },
+      {
+        "name": "18",
+        "value": 2025
+      },
+      {
+        "name": "20",
+        "value": 1848
+      },
+      {
+        "name": "17",
+        "value": 1768
+      },
+      {
+        "name": "12",
+        "value": 1753
+      }
+    ],
+    "aiSummary": "Delhi's UPI performance demonstrates robust adoption and strong transactional activity, with 24,8"
+  },
+  "Gujarat": {
+    "overview": {
+      "totalTransactions": 20061,
+      "totalAmount": 25988190,
+      "avgAmount": 1295.46,
+      "successRate": 95.22
+    },
+    "statusDistribution": [
+      {
+        "name": "SUCCESS",
+        "value": 19102
+      },
+      {
+        "name": "FAILED",
+        "value": 959
+      }
+    ],
+    "transactionTypes": [
+      {
+        "name": "P2P",
+        "value": 8830
+      },
+      {
+        "name": "P2M",
+        "value": 7116
+      },
+      {
+        "name": "Bill Payment",
+        "value": 3045
+      },
+      {
+        "name": "Recharge",
+        "value": 1070
+      }
+    ],
+    "fraud": {
+      "totalFraud": 43,
+      "fraudRate": 0.21,
+      "byCategory": [
+        {
+          "name": "Food",
+          "value": 9
+        },
+        {
+          "name": "Shopping",
+          "value": 8
+        },
+        {
+          "name": "Transport",
+          "value": 6
+        },
+        {
+          "name": "Utilities",
+          "value": 6
+        },
+        {
+          "name": "Grocery",
+          "value": 5
+        },
+        {
+          "name": "Entertainment",
+          "value": 3
+        },
+        {
+          "name": "Education",
+          "value": 2
+        },
+        {
+          "name": "Fuel",
+          "value": 2
+        },
+        {
+          "name": "Other",
+          "value": 2
+        }
+      ]
+    },
+    "devices": [
+      {
+        "name": "Android",
+        "value": 15053
+      },
+      {
+        "name": "iOS",
+        "value": 3983
+      },
+      {
+        "name": "Web",
+        "value": 1025
+      }
+    ],
+    "networks": [
+      {
+        "name": "4G",
+        "value": 12035
+      },
+      {
+        "name": "5G",
+        "value": 4980
+      },
+      {
+        "name": "WiFi",
+        "value": 2055
+      },
+      {
+        "name": "3G",
+        "value": 991
+      }
+    ],
+    "banks": [
+      {
+        "name": "SBI",
+        "value": 4941
+      },
+      {
+        "name": "HDFC",
+        "value": 3002
+      },
+      {
+        "name": "ICICI",
+        "value": 2474
+      },
+      {
+        "name": "Axis",
+        "value": 2090
+      },
+      {
+        "name": "Yes Bank",
+        "value": 1997
+      },
+      {
+        "name": "IndusInd",
+        "value": 1979
+      },
+      {
+        "name": "PNB",
+        "value": 1955
+      },
+      {
+        "name": "Kotak",
+        "value": 1623
+      }
+    ],
+    "hourlyTrend": [
+      {
+        "name": "0",
+        "value": 266
+      },
+      {
+        "name": "1",
+        "value": 191
+      },
+      {
+        "name": "2",
+        "value": 144
+      },
+      {
+        "name": "3",
+        "value": 95
+      },
+      {
+        "name": "4",
+        "value": 112
+      },
+      {
+        "name": "5",
+        "value": 141
+      },
+      {
+        "name": "6",
+        "value": 266
+      },
+      {
+        "name": "7",
+        "value": 469
+      },
+      {
+        "name": "8",
+        "value": 695
+      },
+      {
+        "name": "9",
+        "value": 856
+      },
+      {
+        "name": "10",
+        "value": 1130
+      },
+      {
+        "name": "11",
+        "value": 1262
+      },
+      {
+        "name": "12",
+        "value": 1373
+      },
+      {
+        "name": "13",
+        "value": 1174
+      },
+      {
+        "name": "14",
+        "value": 899
+      },
+      {
+        "name": "15",
+        "value": 1027
+      },
+      {
+        "name": "16",
+        "value": 1123
+      },
+      {
+        "name": "17",
+        "value": 1481
+      },
+      {
+        "name": "18",
+        "value": 1601
+      },
+      {
+        "name": "19",
+        "value": 1652
+      },
+      {
+        "name": "20",
+        "value": 1545
+      },
+      {
+        "name": "21",
+        "value": 1372
+      },
+      {
+        "name": "22",
+        "value": 734
+      },
+      {
+        "name": "23",
+        "value": 453
+      }
+    ],
+    "dailyPattern": [
+      {
+        "name": "Monday",
+        "value": 3010
+      },
+      {
+        "name": "Tuesday",
+        "value": 2862
+      },
+      {
+        "name": "Wednesday",
+        "value": 2736
+      },
+      {
+        "name": "Thursday",
+        "value": 2851
+      },
+      {
+        "name": "Friday",
+        "value": 2902
+      },
+      {
+        "name": "Saturday",
+        "value": 2813
+      },
+      {
+        "name": "Sunday",
+        "value": 2887
+      }
+    ],
+    "demographics": [
+      {
+        "name": "26-35",
+        "value": 7040
+      },
+      {
+        "name": "36-45",
+        "value": 5010
+      },
+      {
+        "name": "18-25",
+        "value": 4980
+      },
+      {
+        "name": "46-55",
+        "value": 2032
+      },
+      {
+        "name": "56+",
+        "value": 999
+      }
+    ],
+    "revenueByCategory": [
+      {
+        "name": "Shopping",
+        "value": 5905638
+      },
+      {
+        "name": "Grocery",
+        "value": 4917788
+      },
+      {
+        "name": "Utilities",
+        "value": 4073400
+      },
+      {
+        "name": "Fuel",
+        "value": 3113862
+      },
+      {
+        "name": "Education",
+        "value": 2980977
+      },
+      {
+        "name": "Other",
+        "value": 1724455
+      },
+      {
+        "name": "Food",
+        "value": 1597954
+      },
+      {
+        "name": "Entertainment",
+        "value": 640663
+      },
+      {
+        "name": "Healthcare",
+        "value": 522574
+      },
+      {
+        "name": "Transport",
+        "value": 510879
+      }
+    ],
+    "peakHours": [
+      {
+        "name": "19",
+        "value": 1652
+      },
+      {
+        "name": "18",
+        "value": 1601
+      },
+      {
+        "name": "20",
+        "value": 1545
+      },
+      {
+        "name": "17",
+        "value": 1481
+      },
+      {
+        "name": "12",
+        "value": 1373
+      }
+    ],
+    "aiSummary": "Gujarat's UPI ecosystem demonstrates robust performance with 20,061 transactions"
+  },
+  "Karnataka": {
+    "overview": {
+      "totalTransactions": 29756,
+      "totalAmount": 38451158,
+      "avgAmount": 1292.22,
+      "successRate": 95.14
+    },
+    "statusDistribution": [
+      {
+        "name": "SUCCESS",
+        "value": 28309
+      },
+      {
+        "name": "FAILED",
+        "value": 1447
+      }
+    ],
+    "transactionTypes": [
+      {
+        "name": "P2P",
+        "value": 13350
+      },
+      {
+        "name": "P2M",
+        "value": 10506
+      },
+      {
+        "name": "Bill Payment",
+        "value": 4441
+      },
+      {
+        "name": "Recharge",
+        "value": 1459
+      }
+    ],
+    "fraud": {
+      "totalFraud": 69,
+      "fraudRate": 0.23,
+      "byCategory": [
+        {
+          "name": "Grocery",
+          "value": 14
+        },
+        {
+          "name": "Shopping",
+          "value": 9
+        },
+        {
+          "name": "Transport",
+          "value": 8
+        },
+        {
+          "name": "Other",
+          "value": 8
+        },
+        {
+          "name": "Fuel",
+          "value": 8
+        },
+        {
+          "name": "Food",
+          "value": 7
+        },
+        {
+          "name": "Entertainment",
+          "value": 6
+        },
+        {
+          "name": "Utilities",
+          "value": 6
+        },
+        {
+          "name": "Healthcare",
+          "value": 2
+        },
+        {
+          "name": "Education",
+          "value": 1
+        }
+      ]
+    },
+    "devices": [
+      {
+        "name": "Android",
+        "value": 22265
+      },
+      {
+        "name": "iOS",
+        "value": 5980
+      },
+      {
+        "name": "Web",
+        "value": 1511
+      }
+    ],
+    "networks": [
+      {
+        "name": "4G",
+        "value": 17820
+      },
+      {
+        "name": "5G",
+        "value": 7498
+      },
+      {
+        "name": "WiFi",
+        "value": 2950
+      },
+      {
+        "name": "3G",
+        "value": 1488
+      }
+    ],
+    "banks": [
+      {
+        "name": "SBI",
+        "value": 7409
+      },
+      {
+        "name": "HDFC",
+        "value": 4521
+      },
+      {
+        "name": "ICICI",
+        "value": 3478
+      },
+      {
+        "name": "IndusInd",
+        "value": 3060
+      },
+      {
+        "name": "PNB",
+        "value": 3035
+      },
+      {
+        "name": "Axis",
+        "value": 2979
+      },
+      {
+        "name": "Yes Bank",
+        "value": 2954
+      },
+      {
+        "name": "Kotak",
+        "value": 2320
+      }
+    ],
+    "hourlyTrend": [
+      {
+        "name": "0",
+        "value": 403
+      },
+      {
+        "name": "1",
+        "value": 243
+      },
+      {
+        "name": "2",
+        "value": 196
+      },
+      {
+        "name": "3",
+        "value": 145
+      },
+      {
+        "name": "4",
+        "value": 127
+      },
+      {
+        "name": "5",
+        "value": 212
+      },
+      {
+        "name": "6",
+        "value": 421
+      },
+      {
+        "name": "7",
+        "value": 686
+      },
+      {
+        "name": "8",
+        "value": 1003
+      },
+      {
+        "name": "9",
+        "value": 1251
+      },
+      {
+        "name": "10",
+        "value": 1680
+      },
+      {
+        "name": "11",
+        "value": 1969
+      },
+      {
+        "name": "12",
+        "value": 2147
+      },
+      {
+        "name": "13",
+        "value": 1798
+      },
+      {
+        "name": "14",
+        "value": 1427
+      },
+      {
+        "name": "15",
+        "value": 1441
+      },
+      {
+        "name": "16",
+        "value": 1653
+      },
+      {
+        "name": "17",
+        "value": 2201
+      },
+      {
+        "name": "18",
+        "value": 2369
+      },
+      {
+        "name": "19",
+        "value": 2531
+      },
+      {
+        "name": "20",
+        "value": 2135
+      },
+      {
+        "name": "21",
+        "value": 1880
+      },
+      {
+        "name": "22",
+        "value": 1101
+      },
+      {
+        "name": "23",
+        "value": 737
+      }
+    ],
+    "dailyPattern": [
+      {
+        "name": "Monday",
+        "value": 4267
+      },
+      {
+        "name": "Tuesday",
+        "value": 4300
+      },
+      {
+        "name": "Wednesday",
+        "value": 4308
+      },
+      {
+        "name": "Thursday",
+        "value": 4124
+      },
+      {
+        "name": "Friday",
+        "value": 4237
+      },
+      {
+        "name": "Saturday",
+        "value": 4226
+      },
+      {
+        "name": "Sunday",
+        "value": 4294
+      }
+    ],
+    "demographics": [
+      {
+        "name": "26-35",
+        "value": 10464
+      },
+      {
+        "name": "36-45",
+        "value": 7437
+      },
+      {
+        "name": "18-25",
+        "value": 7344
+      },
+      {
+        "name": "46-55",
+        "value": 2949
+      },
+      {
+        "name": "56+",
+        "value": 1562
+      }
+    ],
+    "revenueByCategory": [
+      {
+        "name": "Shopping",
+        "value": 9081302
+      },
+      {
+        "name": "Grocery",
+        "value": 6911111
+      },
+      {
+        "name": "Utilities",
+        "value": 6270372
+      },
+      {
+        "name": "Fuel",
+        "value": 4541115
+      },
+      {
+        "name": "Education",
+        "value": 4249607
+      },
+      {
+        "name": "Other",
+        "value": 2504179
+      },
+      {
+        "name": "Food",
+        "value": 2372658
+      },
+      {
+        "name": "Entertainment",
+        "value": 977739
+      },
+      {
+        "name": "Healthcare",
+        "value": 815248
+      },
+      {
+        "name": "Transport",
+        "value": 727827
+      }
+    ],
+    "peakHours": [
+      {
+        "name": "19",
+        "value": 2531
+      },
+      {
+        "name": "18",
+        "value": 2369
+      },
+      {
+        "name": "17",
+        "value": 2201
+      },
+      {
+        "name": "12",
+        "value": 2147
+      },
+      {
+        "name": "20",
+        "value": 2135
+      }
+    ],
+    "aiSummary": "Karnataka's UPI ecosystem demonstrates robust performance with nearly 30,000 transactions totaling"
+  },
+  "Maharashtra": {
+    "overview": {
+      "totalTransactions": 37427,
+      "totalAmount": 49043948,
+      "avgAmount": 1310.39,
+      "successRate": 95.08
+    },
+    "statusDistribution": [
+      {
+        "name": "SUCCESS",
+        "value": 35585
+      },
+      {
+        "name": "FAILED",
+        "value": 1842
+      }
+    ],
+    "transactionTypes": [
+      {
+        "name": "P2P",
+        "value": 16967
+      },
+      {
+        "name": "P2M",
+        "value": 13123
+      },
+      {
+        "name": "Bill Payment",
+        "value": 5477
+      },
+      {
+        "name": "Recharge",
+        "value": 1860
+      }
+    ],
+    "fraud": {
+      "totalFraud": 71,
+      "fraudRate": 0.19,
+      "byCategory": [
+        {
+          "name": "Grocery",
+          "value": 15
+        },
+        {
+          "name": "Entertainment",
+          "value": 10
+        },
+        {
+          "name": "Food",
+          "value": 10
+        },
+        {
+          "name": "Shopping",
+          "value": 8
+        },
+        {
+          "name": "Other",
+          "value": 7
+        },
+        {
+          "name": "Fuel",
+          "value": 7
+        },
+        {
+          "name": "Healthcare",
+          "value": 4
+        },
+        {
+          "name": "Education",
+          "value": 4
+        },
+        {
+          "name": "Utilities",
+          "value": 4
+        },
+        {
+          "name": "Transport",
+          "value": 2
+        }
+      ]
+    },
+    "devices": [
+      {
+        "name": "Android",
+        "value": 28057
+      },
+      {
+        "name": "iOS",
+        "value": 7413
+      },
+      {
+        "name": "Web",
+        "value": 1957
+      }
+    ],
+    "networks": [
+      {
+        "name": "4G",
+        "value": 22348
+      },
+      {
+        "name": "5G",
+        "value": 9381
+      },
+      {
+        "name": "WiFi",
+        "value": 3789
+      },
+      {
+        "name": "3G",
+        "value": 1909
+      }
+    ],
+    "banks": [
+      {
+        "name": "SBI",
+        "value": 9490
+      },
+      {
+        "name": "HDFC",
+        "value": 5647
+      },
+      {
+        "name": "ICICI",
+        "value": 4354
+      },
+      {
+        "name": "IndusInd",
+        "value": 3790
+      },
+      {
+        "name": "PNB",
+        "value": 3729
+      },
+      {
+        "name": "Axis",
+        "value": 3706
+      },
+      {
+        "name": "Yes Bank",
+        "value": 3658
+      },
+      {
+        "name": "Kotak",
+        "value": 3053
+      }
+    ],
+    "hourlyTrend": [
+      {
+        "name": "0",
+        "value": 572
+      },
+      {
+        "name": "1",
+        "value": 357
+      },
+      {
+        "name": "2",
+        "value": 272
+      },
+      {
+        "name": "3",
+        "value": 207
+      },
+      {
+        "name": "4",
+        "value": 175
+      },
+      {
+        "name": "5",
+        "value": 242
+      },
+      {
+        "name": "6",
+        "value": 502
+      },
+      {
+        "name": "7",
+        "value": 818
+      },
+      {
+        "name": "8",
+        "value": 1233
+      },
+      {
+        "name": "9",
+        "value": 1554
+      },
+      {
+        "name": "10",
+        "value": 2134
+      },
+      {
+        "name": "11",
+        "value": 2432
+      },
+      {
+        "name": "12",
+        "value": 2660
+      },
+      {
+        "name": "13",
+        "value": 2264
+      },
+      {
+        "name": "14",
+        "value": 1693
+      },
+      {
+        "name": "15",
+        "value": 1949
+      },
+      {
+        "name": "16",
+        "value": 2082
+      },
+      {
+        "name": "17",
+        "value": 2756
+      },
+      {
+        "name": "18",
+        "value": 2952
+      },
+      {
+        "name": "19",
+        "value": 3216
+      },
+      {
+        "name": "20",
+        "value": 2610
+      },
+      {
+        "name": "21",
+        "value": 2470
+      },
+      {
+        "name": "22",
+        "value": 1392
+      },
+      {
+        "name": "23",
+        "value": 885
+      }
+    ],
+    "dailyPattern": [
+      {
+        "name": "Monday",
+        "value": 5599
+      },
+      {
+        "name": "Tuesday",
+        "value": 5268
+      },
+      {
+        "name": "Wednesday",
+        "value": 5403
+      },
+      {
+        "name": "Thursday",
+        "value": 5343
+      },
+      {
+        "name": "Friday",
+        "value": 5275
+      },
+      {
+        "name": "Saturday",
+        "value": 5251
+      },
+      {
+        "name": "Sunday",
+        "value": 5288
+      }
+    ],
+    "demographics": [
+      {
+        "name": "26-35",
+        "value": 13029
+      },
+      {
+        "name": "36-45",
+        "value": 9472
+      },
+      {
+        "name": "18-25",
+        "value": 9418
+      },
+      {
+        "name": "46-55",
+        "value": 3719
+      },
+      {
+        "name": "56+",
+        "value": 1789
+      }
+    ],
+    "revenueByCategory": [
+      {
+        "name": "Shopping",
+        "value": 11640595
+      },
+      {
+        "name": "Grocery",
+        "value": 8669167
+      },
+      {
+        "name": "Utilities",
+        "value": 8002621
+      },
+      {
+        "name": "Fuel",
+        "value": 5882943
+      },
+      {
+        "name": "Education",
+        "value": 5579947
+      },
+      {
+        "name": "Other",
+        "value": 3165319
+      },
+      {
+        "name": "Food",
+        "value": 2991716
+      },
+      {
+        "name": "Entertainment",
+        "value": 1230533
+      },
+      {
+        "name": "Healthcare",
+        "value": 995232
+      },
+      {
+        "name": "Transport",
+        "value": 885875
+      }
+    ],
+    "peakHours": [
+      {
+        "name": "19",
+        "value": 3216
+      },
+      {
+        "name": "18",
+        "value": 2952
+      },
+      {
+        "name": "17",
+        "value": 2756
+      },
+      {
+        "name": "12",
+        "value": 2660
+      },
+      {
+        "name": "20",
+        "value": 2610
+      }
+    ],
+    "aiSummary": "Maharashtra's UPI performance is robust, recording 37,427 transactions"
+  },
+  "Rajasthan": {
+    "overview": {
+      "totalTransactions": 19981,
+      "totalAmount": 26730470,
+      "avgAmount": 1337.79,
+      "successRate": 95.21
+    },
+    "statusDistribution": [
+      {
+        "name": "SUCCESS",
+        "value": 19023
+      },
+      {
+        "name": "FAILED",
+        "value": 958
+      }
+    ],
+    "transactionTypes": [
+      {
+        "name": "P2P",
+        "value": 8960
+      },
+      {
+        "name": "P2M",
+        "value": 7050
+      },
+      {
+        "name": "Bill Payment",
+        "value": 2963
+      },
+      {
+        "name": "Recharge",
+        "value": 1008
+      }
+    ],
+    "fraud": {
+      "totalFraud": 46,
+      "fraudRate": 0.23,
+      "byCategory": [
+        {
+          "name": "Grocery",
+          "value": 10
+        },
+        {
+          "name": "Food",
+          "value": 9
+        },
+        {
+          "name": "Shopping",
+          "value": 8
+        },
+        {
+          "name": "Other",
+          "value": 5
+        },
+        {
+          "name": "Transport",
+          "value": 4
+        },
+        {
+          "name": "Utilities",
+          "value": 3
+        },
+        {
+          "name": "Fuel",
+          "value": 3
+        },
+        {
+          "name": "Education",
+          "value": 2
+        },
+        {
+          "name": "Entertainment",
+          "value": 1
+        },
+        {
+          "name": "Healthcare",
+          "value": 1
+        }
+      ]
+    },
+    "devices": [
+      {
+        "name": "Android",
+        "value": 14938
+      },
+      {
+        "name": "iOS",
+        "value": 4021
+      },
+      {
+        "name": "Web",
+        "value": 1022
+      }
+    ],
+    "networks": [
+      {
+        "name": "4G",
+        "value": 11921
+      },
+      {
+        "name": "5G",
+        "value": 5010
+      },
+      {
+        "name": "WiFi",
+        "value": 2012
+      },
+      {
+        "name": "3G",
+        "value": 1038
+      }
+    ],
+    "banks": [
+      {
+        "name": "SBI",
+        "value": 5039
+      },
+      {
+        "name": "HDFC",
+        "value": 2929
+      },
+      {
+        "name": "ICICI",
+        "value": 2368
+      },
+      {
+        "name": "IndusInd",
+        "value": 2043
+      },
+      {
+        "name": "PNB",
+        "value": 2037
+      },
+      {
+        "name": "Axis",
+        "value": 2017
+      },
+      {
+        "name": "Yes Bank",
+        "value": 1930
+      },
+      {
+        "name": "Kotak",
+        "value": 1618
+      }
+    ],
+    "hourlyTrend": [
+      {
+        "name": "0",
+        "value": 279
+      },
+      {
+        "name": "1",
+        "value": 186
+      },
+      {
+        "name": "2",
+        "value": 124
+      },
+      {
+        "name": "3",
+        "value": 104
+      },
+      {
+        "name": "4",
+        "value": 114
+      },
+      {
+        "name": "5",
+        "value": 140
+      },
+      {
+        "name": "6",
+        "value": 291
+      },
+      {
+        "name": "7",
+        "value": 459
+      },
+      {
+        "name": "8",
+        "value": 681
+      },
+      {
+        "name": "9",
+        "value": 835
+      },
+      {
+        "name": "10",
+        "value": 1104
+      },
+      {
+        "name": "11",
+        "value": 1308
+      },
+      {
+        "name": "12",
+        "value": 1381
+      },
+      {
+        "name": "13",
+        "value": 1199
+      },
+      {
+        "name": "14",
+        "value": 923
+      },
+      {
+        "name": "15",
+        "value": 995
+      },
+      {
+        "name": "16",
+        "value": 1087
+      },
+      {
+        "name": "17",
+        "value": 1450
+      },
+      {
+        "name": "18",
+        "value": 1588
+      },
+      {
+        "name": "19",
+        "value": 1702
+      },
+      {
+        "name": "20",
+        "value": 1463
+      },
+      {
+        "name": "21",
+        "value": 1350
+      },
+      {
+        "name": "22",
+        "value": 746
+      },
+      {
+        "name": "23",
+        "value": 472
+      }
+    ],
+    "dailyPattern": [
+      {
+        "name": "Monday",
+        "value": 2842
+      },
+      {
+        "name": "Tuesday",
+        "value": 2853
+      },
+      {
+        "name": "Wednesday",
+        "value": 2951
+      },
+      {
+        "name": "Thursday",
+        "value": 2840
+      },
+      {
+        "name": "Friday",
+        "value": 2812
+      },
+      {
+        "name": "Saturday",
+        "value": 2798
+      },
+      {
+        "name": "Sunday",
+        "value": 2885
+      }
+    ],
+    "demographics": [
+      {
+        "name": "26-35",
+        "value": 6944
+      },
+      {
+        "name": "36-45",
+        "value": 5158
+      },
+      {
+        "name": "18-25",
+        "value": 4871
+      },
+      {
+        "name": "46-55",
+        "value": 1996
+      },
+      {
+        "name": "56+",
+        "value": 1012
+      }
+    ],
+    "revenueByCategory": [
+      {
+        "name": "Shopping",
+        "value": 6312739
+      },
+      {
+        "name": "Grocery",
+        "value": 4584290
+      },
+      {
+        "name": "Utilities",
+        "value": 4254793
+      },
+      {
+        "name": "Education",
+        "value": 3418193
+      },
+      {
+        "name": "Fuel",
+        "value": 3241256
+      },
+      {
+        "name": "Other",
+        "value": 1595660
+      },
+      {
+        "name": "Food",
+        "value": 1585260
+      },
+      {
+        "name": "Entertainment",
+        "value": 683947
+      },
+      {
+        "name": "Healthcare",
+        "value": 562739
+      },
+      {
+        "name": "Transport",
+        "value": 491593
+      }
+    ],
+    "peakHours": [
+      {
+        "name": "19",
+        "value": 1702
+      },
+      {
+        "name": "18",
+        "value": 1588
+      },
+      {
+        "name": "20",
+        "value": 1463
+      },
+      {
+        "name": "17",
+        "value": 1450
+      },
+      {
+        "name": "12",
+        "value": 1381
+      }
+    ],
+    "aiSummary": "Rajasthan's UPI ecosystem demonstrates robust performance with nearly 20,000 transactions totaling ₹"
+  },
+  "Tamil Nadu": {
+    "overview": {
+      "totalTransactions": 25367,
+      "totalAmount": 33343518,
+      "avgAmount": 1314.44,
+      "successRate": 94.88
+    },
+    "statusDistribution": [
+      {
+        "name": "SUCCESS",
+        "value": 24069
+      },
+      {
+        "name": "FAILED",
+        "value": 1298
+      }
+    ],
+    "transactionTypes": [
+      {
+        "name": "P2P",
+        "value": 11426
+      },
+      {
+        "name": "P2M",
+        "value": 8836
+      },
+      {
+        "name": "Bill Payment",
+        "value": 3843
+      },
+      {
+        "name": "Recharge",
+        "value": 1262
+      }
+    ],
+    "fraud": {
+      "totalFraud": 40,
+      "fraudRate": 0.16,
+      "byCategory": [
+        {
+          "name": "Fuel",
+          "value": 8
+        },
+        {
+          "name": "Grocery",
+          "value": 6
+        },
+        {
+          "name": "Healthcare",
+          "value": 5
+        },
+        {
+          "name": "Food",
+          "value": 5
+        },
+        {
+          "name": "Shopping",
+          "value": 4
+        },
+        {
+          "name": "Other",
+          "value": 4
+        },
+        {
+          "name": "Transport",
+          "value": 3
+        },
+        {
+          "name": "Utilities",
+          "value": 2
+        },
+        {
+          "name": "Entertainment",
+          "value": 2
+        },
+        {
+          "name": "Education",
+          "value": 1
+        }
+      ]
+    },
+    "devices": [
+      {
+        "name": "Android",
+        "value": 19066
+      },
+      {
+        "name": "iOS",
+        "value": 5022
+      },
+      {
+        "name": "Web",
+        "value": 1279
+      }
+    ],
+    "networks": [
+      {
+        "name": "4G",
+        "value": 15147
+      },
+      {
+        "name": "5G",
+        "value": 6405
+      },
+      {
+        "name": "WiFi",
+        "value": 2525
+      },
+      {
+        "name": "3G",
+        "value": 1290
+      }
+    ],
+    "banks": [
+      {
+        "name": "SBI",
+        "value": 6312
+      },
+      {
+        "name": "HDFC",
+        "value": 3876
+      },
+      {
+        "name": "ICICI",
+        "value": 3057
+      },
+      {
+        "name": "IndusInd",
+        "value": 2596
+      },
+      {
+        "name": "PNB",
+        "value": 2529
+      },
+      {
+        "name": "Axis",
+        "value": 2491
+      },
+      {
+        "name": "Yes Bank",
+        "value": 2459
+      },
+      {
+        "name": "Kotak",
+        "value": 2047
+      }
+    ],
+    "hourlyTrend": [
+      {
+        "name": "0",
+        "value": 323
+      },
+      {
+        "name": "1",
+        "value": 251
+      },
+      {
+        "name": "2",
+        "value": 176
+      },
+      {
+        "name": "3",
+        "value": 125
+      },
+      {
+        "name": "4",
+        "value": 137
+      },
+      {
+        "name": "5",
+        "value": 167
+      },
+      {
+        "name": "6",
+        "value": 385
+      },
+      {
+        "name": "7",
+        "value": 553
+      },
+      {
+        "name": "8",
+        "value": 858
+      },
+      {
+        "name": "9",
+        "value": 1092
+      },
+      {
+        "name": "10",
+        "value": 1375
+      },
+      {
+        "name": "11",
+        "value": 1640
+      },
+      {
+        "name": "12",
+        "value": 1728
+      },
+      {
+        "name": "13",
+        "value": 1537
+      },
+      {
+        "name": "14",
+        "value": 1129
+      },
+      {
+        "name": "15",
+        "value": 1248
+      },
+      {
+        "name": "16",
+        "value": 1439
+      },
+      {
+        "name": "17",
+        "value": 1861
+      },
+      {
+        "name": "18",
+        "value": 2063
+      },
+      {
+        "name": "19",
+        "value": 2187
+      },
+      {
+        "name": "20",
+        "value": 1917
+      },
+      {
+        "name": "21",
+        "value": 1622
+      },
+      {
+        "name": "22",
+        "value": 980
+      },
+      {
+        "name": "23",
+        "value": 574
+      }
+    ],
+    "dailyPattern": [
+      {
+        "name": "Monday",
+        "value": 3753
+      },
+      {
+        "name": "Tuesday",
+        "value": 3562
+      },
+      {
+        "name": "Wednesday",
+        "value": 3598
+      },
+      {
+        "name": "Thursday",
+        "value": 3571
+      },
+      {
+        "name": "Friday",
+        "value": 3702
+      },
+      {
+        "name": "Saturday",
+        "value": 3587
+      },
+      {
+        "name": "Sunday",
+        "value": 3594
+      }
+    ],
+    "demographics": [
+      {
+        "name": "26-35",
+        "value": 8979
+      },
+      {
+        "name": "36-45",
+        "value": 6383
+      },
+      {
+        "name": "18-25",
+        "value": 6306
+      },
+      {
+        "name": "46-55",
+        "value": 2466
+      },
+      {
+        "name": "56+",
+        "value": 1233
+      }
+    ],
+    "revenueByCategory": [
+      {
+        "name": "Shopping",
+        "value": 7679965
+      },
+      {
+        "name": "Grocery",
+        "value": 5881832
+      },
+      {
+        "name": "Utilities",
+        "value": 5397899
+      },
+      {
+        "name": "Education",
+        "value": 3990181
+      },
+      {
+        "name": "Fuel",
+        "value": 3954466
+      },
+      {
+        "name": "Other",
+        "value": 2239405
+      },
+      {
+        "name": "Food",
+        "value": 1997632
+      },
+      {
+        "name": "Entertainment",
+        "value": 866834
+      },
+      {
+        "name": "Healthcare",
+        "value": 713026
+      },
+      {
+        "name": "Transport",
+        "value": 622278
+      }
+    ],
+    "peakHours": [
+      {
+        "name": "19",
+        "value": 2187
+      },
+      {
+        "name": "18",
+        "value": 2063
+      },
+      {
+        "name": "20",
+        "value": 1917
+      },
+      {
+        "name": "17",
+        "value": 1861
+      },
+      {
+        "name": "12",
+        "value": 1728
+      }
+    ],
+    "aiSummary": "Analysis complete for Tamil Nadu. AI summary was not available at generation time."
+  },
+  "Telangana": {
+    "overview": {
+      "totalTransactions": 22435,
+      "totalAmount": 29750930,
+      "avgAmount": 1326.09,
+      "successRate": 95.29
+    },
+    "statusDistribution": [
+      {
+        "name": "SUCCESS",
+        "value": 21379
+      },
+      {
+        "name": "FAILED",
+        "value": 1056
+      }
+    ],
+    "transactionTypes": [
+      {
+        "name": "P2P",
+        "value": 10134
+      },
+      {
+        "name": "P2M",
+        "value": 7896
+      },
+      {
+        "name": "Bill Payment",
+        "value": 3311
+      },
+      {
+        "name": "Recharge",
+        "value": 1094
+      }
+    ],
+    "fraud": {
+      "totalFraud": 39,
+      "fraudRate": 0.17,
+      "byCategory": [
+        {
+          "name": "Other",
+          "value": 11
+        },
+        {
+          "name": "Grocery",
+          "value": 5
+        },
+        {
+          "name": "Transport",
+          "value": 5
+        },
+        {
+          "name": "Shopping",
+          "value": 4
+        },
+        {
+          "name": "Fuel",
+          "value": 4
+        },
+        {
+          "name": "Entertainment",
+          "value": 3
+        },
+        {
+          "name": "Food",
+          "value": 3
+        },
+        {
+          "name": "Healthcare",
+          "value": 2
+        },
+        {
+          "name": "Utilities",
+          "value": 1
+        },
+        {
+          "name": "Education",
+          "value": 1
+        }
+      ]
+    },
+    "devices": [
+      {
+        "name": "Android",
+        "value": 16789
+      },
+      {
+        "name": "iOS",
+        "value": 4508
+      },
+      {
+        "name": "Web",
+        "value": 1138
+      }
+    ],
+    "networks": [
+      {
+        "name": "4G",
+        "value": 13426
+      },
+      {
+        "name": "5G",
+        "value": 5697
+      },
+      {
+        "name": "WiFi",
+        "value": 2244
+      },
+      {
+        "name": "3G",
+        "value": 1068
+      }
+    ],
+    "banks": [
+      {
+        "name": "SBI",
+        "value": 5544
+      },
+      {
+        "name": "HDFC",
+        "value": 3445
+      },
+      {
+        "name": "ICICI",
+        "value": 2725
+      },
+      {
+        "name": "IndusInd",
+        "value": 2301
+      },
+      {
+        "name": "Axis",
+        "value": 2273
+      },
+      {
+        "name": "Yes Bank",
+        "value": 2214
+      },
+      {
+        "name": "PNB",
+        "value": 2183
+      },
+      {
+        "name": "Kotak",
+        "value": 1750
+      }
+    ],
+    "hourlyTrend": [
+      {
+        "name": "0",
+        "value": 304
+      },
+      {
+        "name": "1",
+        "value": 213
+      },
+      {
+        "name": "2",
+        "value": 147
+      },
+      {
+        "name": "3",
+        "value": 114
+      },
+      {
+        "name": "4",
+        "value": 107
+      },
+      {
+        "name": "5",
+        "value": 159
+      },
+      {
+        "name": "6",
+        "value": 320
+      },
+      {
+        "name": "7",
+        "value": 513
+      },
+      {
+        "name": "8",
+        "value": 752
+      },
+      {
+        "name": "9",
+        "value": 926
+      },
+      {
+        "name": "10",
+        "value": 1232
+      },
+      {
+        "name": "11",
+        "value": 1491
+      },
+      {
+        "name": "12",
+        "value": 1534
+      },
+      {
+        "name": "13",
+        "value": 1348
+      },
+      {
+        "name": "14",
+        "value": 1042
+      },
+      {
+        "name": "15",
+        "value": 1189
+      },
+      {
+        "name": "16",
+        "value": 1236
+      },
+      {
+        "name": "17",
+        "value": 1608
+      },
+      {
+        "name": "18",
+        "value": 1824
+      },
+      {
+        "name": "19",
+        "value": 1914
+      },
+      {
+        "name": "20",
+        "value": 1660
+      },
+      {
+        "name": "21",
+        "value": 1419
+      },
+      {
+        "name": "22",
+        "value": 865
+      },
+      {
+        "name": "23",
+        "value": 518
+      }
+    ],
+    "dailyPattern": [
+      {
+        "name": "Monday",
+        "value": 3273
+      },
+      {
+        "name": "Tuesday",
+        "value": 3097
+      },
+      {
+        "name": "Wednesday",
+        "value": 3186
+      },
+      {
+        "name": "Thursday",
+        "value": 3165
+      },
+      {
+        "name": "Friday",
+        "value": 3213
+      },
+      {
+        "name": "Saturday",
+        "value": 3222
+      },
+      {
+        "name": "Sunday",
+        "value": 3279
+      }
+    ],
+    "demographics": [
+      {
+        "name": "26-35",
+        "value": 7784
+      },
+      {
+        "name": "18-25",
+        "value": 5613
+      },
+      {
+        "name": "36-45",
+        "value": 5572
+      },
+      {
+        "name": "46-55",
+        "value": 2275
+      },
+      {
+        "name": "56+",
+        "value": 1191
+      }
+    ],
+    "revenueByCategory": [
+      {
+        "name": "Shopping",
+        "value": 7130562
+      },
+      {
+        "name": "Grocery",
+        "value": 5313927
+      },
+      {
+        "name": "Utilities",
+        "value": 4710421
+      },
+      {
+        "name": "Education",
+        "value": 3532453
+      },
+      {
+        "name": "Fuel",
+        "value": 3450329
+      },
+      {
+        "name": "Other",
+        "value": 1921802
+      },
+      {
+        "name": "Food",
+        "value": 1780620
+      },
+      {
+        "name": "Entertainment",
+        "value": 695676
+      },
+      {
+        "name": "Healthcare",
+        "value": 652289
+      },
+      {
+        "name": "Transport",
+        "value": 562851
+      }
+    ],
+    "peakHours": [
+      {
+        "name": "19",
+        "value": 1914
+      },
+      {
+        "name": "18",
+        "value": 1824
+      },
+      {
+        "name": "20",
+        "value": 1660
+      },
+      {
+        "name": "17",
+        "value": 1608
+      },
+      {
+        "name": "12",
+        "value": 1534
+      }
+    ],
+    "aiSummary": "Analysis complete for Telangana. AI summary was not available at generation time."
+  },
+  "Uttar Pradesh": {
+    "overview": {
+      "totalTransactions": 30125,
+      "totalAmount": 40035717,
+      "avgAmount": 1328.99,
+      "successRate": 94.78
+    },
+    "statusDistribution": [
+      {
+        "name": "SUCCESS",
+        "value": 28553
+      },
+      {
+        "name": "FAILED",
+        "value": 1572
+      }
+    ],
+    "transactionTypes": [
+      {
+        "name": "P2P",
+        "value": 13531
+      },
+      {
+        "name": "P2M",
+        "value": 10470
+      },
+      {
+        "name": "Bill Payment",
+        "value": 4593
+      },
+      {
+        "name": "Recharge",
+        "value": 1531
+      }
+    ],
+    "fraud": {
+      "totalFraud": 52,
+      "fraudRate": 0.17,
+      "byCategory": [
+        {
+          "name": "Food",
+          "value": 17
+        },
+        {
+          "name": "Grocery",
+          "value": 9
+        },
+        {
+          "name": "Transport",
+          "value": 7
+        },
+        {
+          "name": "Fuel",
+          "value": 5
+        },
+        {
+          "name": "Shopping",
+          "value": 4
+        },
+        {
+          "name": "Entertainment",
+          "value": 3
+        },
+        {
+          "name": "Healthcare",
+          "value": 3
+        },
+        {
+          "name": "Education",
+          "value": 2
+        },
+        {
+          "name": "Other",
+          "value": 2
+        }
+      ]
+    },
+    "devices": [
+      {
+        "name": "Android",
+        "value": 22629
+      },
+      {
+        "name": "iOS",
+        "value": 5992
+      },
+      {
+        "name": "Web",
+        "value": 1504
+      }
+    ],
+    "networks": [
+      {
+        "name": "4G",
+        "value": 18125
+      },
+      {
+        "name": "5G",
+        "value": 7454
+      },
+      {
+        "name": "WiFi",
+        "value": 3056
+      },
+      {
+        "name": "3G",
+        "value": 1490
+      }
+    ],
+    "banks": [
+      {
+        "name": "SBI",
+        "value": 7562
+      },
+      {
+        "name": "HDFC",
+        "value": 4371
+      },
+      {
+        "name": "ICICI",
+        "value": 3676
+      },
+      {
+        "name": "IndusInd",
+        "value": 3034
+      },
+      {
+        "name": "PNB",
+        "value": 3023
+      },
+      {
+        "name": "Axis",
+        "value": 3005
+      },
+      {
+        "name": "Yes Bank",
+        "value": 2999
+      },
+      {
+        "name": "Kotak",
+        "value": 2455
+      }
+    ],
+    "hourlyTrend": [
+      {
+        "name": "0",
+        "value": 411
+      },
+      {
+        "name": "1",
+        "value": 249
+      },
+      {
+        "name": "2",
+        "value": 199
+      },
+      {
+        "name": "3",
+        "value": 166
+      },
+      {
+        "name": "4",
+        "value": 139
+      },
+      {
+        "name": "5",
+        "value": 207
+      },
+      {
+        "name": "6",
+        "value": 453
+      },
+      {
+        "name": "7",
+        "value": 669
+      },
+      {
+        "name": "8",
+        "value": 974
+      },
+      {
+        "name": "9",
+        "value": 1268
+      },
+      {
+        "name": "10",
+        "value": 1721
+      },
+      {
+        "name": "11",
+        "value": 2050
+      },
+      {
+        "name": "12",
+        "value": 2168
+      },
+      {
+        "name": "13",
+        "value": 1843
+      },
+      {
+        "name": "14",
+        "value": 1340
+      },
+      {
+        "name": "15",
+        "value": 1465
+      },
+      {
+        "name": "16",
+        "value": 1775
+      },
+      {
+        "name": "17",
+        "value": 2188
+      },
+      {
+        "name": "18",
+        "value": 2360
+      },
+      {
+        "name": "19",
+        "value": 2450
+      },
+      {
+        "name": "20",
+        "value": 2307
+      },
+      {
+        "name": "21",
+        "value": 1894
+      },
+      {
+        "name": "22",
+        "value": 1131
+      },
+      {
+        "name": "23",
+        "value": 698
+      }
+    ],
+    "dailyPattern": [
+      {
+        "name": "Monday",
+        "value": 4353
+      },
+      {
+        "name": "Tuesday",
+        "value": 4344
+      },
+      {
+        "name": "Wednesday",
+        "value": 4264
+      },
+      {
+        "name": "Thursday",
+        "value": 4296
+      },
+      {
+        "name": "Friday",
+        "value": 4246
+      },
+      {
+        "name": "Saturday",
+        "value": 4278
+      },
+      {
+        "name": "Sunday",
+        "value": 4344
+      }
+    ],
+    "demographics": [
+      {
+        "name": "26-35",
+        "value": 10528
+      },
+      {
+        "name": "18-25",
+        "value": 7658
+      },
+      {
+        "name": "36-45",
+        "value": 7510
+      },
+      {
+        "name": "46-55",
+        "value": 2999
+      },
+      {
+        "name": "56+",
+        "value": 1430
+      }
+    ],
+    "revenueByCategory": [
+      {
+        "name": "Shopping",
+        "value": 9563879
+      },
+      {
+        "name": "Grocery",
+        "value": 6921052
+      },
+      {
+        "name": "Utilities",
+        "value": 6392322
+      },
+      {
+        "name": "Education",
+        "value": 4949499
+      },
+      {
+        "name": "Fuel",
+        "value": 4721121
+      },
+      {
+        "name": "Other",
+        "value": 2443002
+      },
+      {
+        "name": "Food",
+        "value": 2430081
+      },
+      {
+        "name": "Entertainment",
+        "value": 1014175
+      },
+      {
+        "name": "Healthcare",
+        "value": 839386
+      },
+      {
+        "name": "Transport",
+        "value": 761200
+      }
+    ],
+    "peakHours": [
+      {
+        "name": "19",
+        "value": 2450
+      },
+      {
+        "name": "18",
+        "value": 2360
+      },
+      {
+        "name": "20",
+        "value": 2307
+      },
+      {
+        "name": "17",
+        "value": 2188
+      },
+      {
+        "name": "12",
+        "value": 2168
+      }
+    ],
+    "aiSummary": "Analysis complete for Uttar Pradesh. AI summary was not available at generation time."
+  },
+  "West Bengal": {
+    "overview": {
+      "totalTransactions": 19972,
+      "totalAmount": 25952594,
+      "avgAmount": 1299.45,
+      "successRate": 94.96
+    },
+    "statusDistribution": [
+      {
+        "name": "SUCCESS",
+        "value": 18965
+      },
+      {
+        "name": "FAILED",
+        "value": 1007
+      }
+    ],
+    "transactionTypes": [
+      {
+        "name": "P2P",
+        "value": 8906
+      },
+      {
+        "name": "P2M",
+        "value": 7011
+      },
+      {
+        "name": "Bill Payment",
+        "value": 3028
+      },
+      {
+        "name": "Recharge",
+        "value": 1027
+      }
+    ],
+    "fraud": {
+      "totalFraud": 35,
+      "fraudRate": 0.18,
+      "byCategory": [
+        {
+          "name": "Grocery",
+          "value": 16
+        },
+        {
+          "name": "Shopping",
+          "value": 5
+        },
+        {
+          "name": "Food",
+          "value": 4
+        },
+        {
+          "name": "Entertainment",
+          "value": 3
+        },
+        {
+          "name": "Transport",
+          "value": 2
+        },
+        {
+          "name": "Utilities",
+          "value": 2
+        },
+        {
+          "name": "Other",
+          "value": 2
+        },
+        {
+          "name": "Education",
+          "value": 1
+        }
+      ]
+    },
+    "devices": [
+      {
+        "name": "Android",
+        "value": 15110
+      },
+      {
+        "name": "iOS",
+        "value": 3930
+      },
+      {
+        "name": "Web",
+        "value": 932
+      }
+    ],
+    "networks": [
+      {
+        "name": "4G",
+        "value": 12042
+      },
+      {
+        "name": "5G",
+        "value": 4950
+      },
+      {
+        "name": "WiFi",
+        "value": 1973
+      },
+      {
+        "name": "3G",
+        "value": 1007
+      }
+    ],
+    "banks": [
+      {
+        "name": "SBI",
+        "value": 5104
+      },
+      {
+        "name": "HDFC",
+        "value": 2968
+      },
+      {
+        "name": "ICICI",
+        "value": 2272
+      },
+      {
+        "name": "Yes Bank",
+        "value": 2057
+      },
+      {
+        "name": "Axis",
+        "value": 2028
+      },
+      {
+        "name": "PNB",
+        "value": 1971
+      },
+      {
+        "name": "IndusInd",
+        "value": 1958
+      },
+      {
+        "name": "Kotak",
+        "value": 1614
+      }
+    ],
+    "hourlyTrend": [
+      {
+        "name": "0",
+        "value": 230
+      },
+      {
+        "name": "1",
+        "value": 156
+      },
+      {
+        "name": "2",
+        "value": 129
+      },
+      {
+        "name": "3",
+        "value": 105
+      },
+      {
+        "name": "4",
+        "value": 120
+      },
+      {
+        "name": "5",
+        "value": 161
+      },
+      {
+        "name": "6",
+        "value": 270
+      },
+      {
+        "name": "7",
+        "value": 450
+      },
+      {
+        "name": "8",
+        "value": 670
+      },
+      {
+        "name": "9",
+        "value": 814
+      },
+      {
+        "name": "10",
+        "value": 1107
+      },
+      {
+        "name": "11",
+        "value": 1273
+      },
+      {
+        "name": "12",
+        "value": 1383
+      },
+      {
+        "name": "13",
+        "value": 1231
+      },
+      {
+        "name": "14",
+        "value": 885
+      },
+      {
+        "name": "15",
+        "value": 984
+      },
+      {
+        "name": "16",
+        "value": 1090
+      },
+      {
+        "name": "17",
+        "value": 1532
+      },
+      {
+        "name": "18",
+        "value": 1637
+      },
+      {
+        "name": "19",
+        "value": 1749
+      },
+      {
+        "name": "20",
+        "value": 1491
+      },
+      {
+        "name": "21",
+        "value": 1307
+      },
+      {
+        "name": "22",
+        "value": 729
+      },
+      {
+        "name": "23",
+        "value": 469
+      }
+    ],
+    "dailyPattern": [
+      {
+        "name": "Monday",
+        "value": 2928
+      },
+      {
+        "name": "Tuesday",
+        "value": 2823
+      },
+      {
+        "name": "Wednesday",
+        "value": 2835
+      },
+      {
+        "name": "Thursday",
+        "value": 2888
+      },
+      {
+        "name": "Friday",
+        "value": 2744
+      },
+      {
+        "name": "Saturday",
+        "value": 2819
+      },
+      {
+        "name": "Sunday",
+        "value": 2935
+      }
+    ],
+    "demographics": [
+      {
+        "name": "26-35",
+        "value": 7049
+      },
+      {
+        "name": "36-45",
+        "value": 5002
+      },
+      {
+        "name": "18-25",
+        "value": 4994
+      },
+      {
+        "name": "46-55",
+        "value": 1979
+      },
+      {
+        "name": "56+",
+        "value": 948
+      }
+    ],
+    "revenueByCategory": [
+      {
+        "name": "Shopping",
+        "value": 5932704
+      },
+      {
+        "name": "Grocery",
+        "value": 4764314
+      },
+      {
+        "name": "Utilities",
+        "value": 4234134
+      },
+      {
+        "name": "Fuel",
+        "value": 3138688
+      },
+      {
+        "name": "Education",
+        "value": 2988723
+      },
+      {
+        "name": "Other",
+        "value": 1620724
+      },
+      {
+        "name": "Food",
+        "value": 1593641
+      },
+      {
+        "name": "Entertainment",
+        "value": 658002
+      },
+      {
+        "name": "Healthcare",
+        "value": 531519
+      },
+      {
+        "name": "Transport",
+        "value": 490145
+      }
+    ],
+    "peakHours": [
+      {
+        "name": "19",
+        "value": 1749
+      },
+      {
+        "name": "18",
+        "value": 1637
+      },
+      {
+        "name": "17",
+        "value": 1532
+      },
+      {
+        "name": "20",
+        "value": 1491
+      },
+      {
+        "name": "12",
+        "value": 1383
+      }
+    ],
+    "aiSummary": "Analysis complete for West Bengal. AI summary was not available at generation time."
+  }
+}
