@@ -1,16 +1,216 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   Tooltip as RechartsTooltip, ResponsiveContainer, Legend, ComposedChart,
   Area, AreaChart, ReferenceLine, Treemap, Cell, ScatterChart, Scatter, ZAxis, Sankey
 } from 'recharts';
-import { ShieldCheck, TrendingUp, ZapOff, Users, WifiOff, Info } from 'lucide-react';
+import { ShieldCheck, TrendingUp, ZapOff, Users, WifiOff, Info, Loader2, SlidersHorizontal, GitBranch, Search } from 'lucide-react';
+import { useDuckDB } from '@/hooks/useDuckDB';
 
 export default function SimulationsPage() {
   const [activeSim, setActiveSim] = useState('approval');
+  const { db, loading: dbLoading } = useDuckDB();
+
+  // ==========================================
+  // DATA-DRIVEN: What-If Fraud Rules
+  // ==========================================
+  const [fraudAmountThreshold, setFraudAmountThreshold] = useState(100000);
+  const [fraudBlockDevice, setFraudBlockDevice] = useState<string>('none');
+  const [fraudBlockNetwork, setFraudBlockNetwork] = useState<string>('none');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [fraudRuleResult, setFraudRuleResult] = useState<any>(null);
+  const [fraudRuleLoading, setFraudRuleLoading] = useState(false);
+
+  const runFraudSimulation = useCallback(async () => {
+    if (!db) return;
+    setFraudRuleLoading(true);
+    try {
+      const conn = await db.connect();
+      const conditions: string[] = [`amount_inr > ${fraudAmountThreshold}`];
+      if (fraudBlockDevice !== 'none') conditions.push(`device_type = '${fraudBlockDevice}'`);
+      if (fraudBlockNetwork !== 'none') conditions.push(`network_type = '${fraudBlockNetwork}'`);
+      const where = conditions.join(' OR ');
+
+      const res = await conn.query(`
+        SELECT
+          CAST(COUNT(*) AS INTEGER) as total_txns,
+          CAST(SUM(CASE WHEN (${where}) THEN 1 ELSE 0 END) AS INTEGER) as blocked,
+          CAST(SUM(CASE WHEN (${where}) AND fraud_flag=1 THEN 1 ELSE 0 END) AS INTEGER) as true_positives,
+          CAST(SUM(CASE WHEN (${where}) AND fraud_flag=0 THEN 1 ELSE 0 END) AS INTEGER) as false_positives,
+          CAST(SUM(CASE WHEN NOT(${where}) AND fraud_flag=1 THEN 1 ELSE 0 END) AS INTEGER) as missed_fraud,
+          CAST(SUM(CASE WHEN (${where}) AND fraud_flag=0 THEN amount_inr ELSE 0 END) AS DOUBLE) as revenue_lost,
+          CAST(SUM(CASE WHEN (${where}) AND fraud_flag=1 THEN amount_inr ELSE 0 END) AS DOUBLE) as fraud_prevented,
+          CAST(SUM(fraud_flag) AS INTEGER) as total_fraud
+        FROM transactions
+      `);
+      const r = res.get(0);
+      const toNum = (v: any) => typeof v === 'bigint' ? Number(v) : Number(v || 0);
+      setFraudRuleResult({
+        totalTxns: toNum(r?.total_txns),
+        blocked: toNum(r?.blocked),
+        truePositives: toNum(r?.true_positives),
+        falsePositives: toNum(r?.false_positives),
+        missedFraud: toNum(r?.missed_fraud),
+        revenueLost: toNum(r?.revenue_lost),
+        fraudPrevented: toNum(r?.fraud_prevented),
+        totalFraud: toNum(r?.total_fraud),
+      });
+      await conn.close();
+    } catch (e) { console.error(e); }
+    finally { setFraudRuleLoading(false); }
+  }, [db, fraudAmountThreshold, fraudBlockDevice, fraudBlockNetwork]);
+
+  useEffect(() => {
+    if (activeSim === 'whatif' && db && !fraudRuleResult) runFraudSimulation();
+  }, [activeSim, db, fraudRuleResult, runFraudSimulation]);
+
+  // ==========================================
+  // DATA-DRIVEN: Real Transaction Flow
+  // ==========================================
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [sankeyData, setSankeyData] = useState<any>(null);
+  const [sankeyLoading, setSankeyLoading] = useState(false);
+
+  const loadSankey = useCallback(async () => {
+    if (!db) return;
+    setSankeyLoading(true);
+    try {
+      const conn = await db.connect();
+      const res = await conn.query(`
+        SELECT sender_state, sender_bank, merchant_category, transaction_status,
+          CAST(COUNT(*) AS INTEGER) as cnt
+        FROM transactions GROUP BY sender_state, sender_bank, merchant_category, transaction_status
+      `);
+      // Build nodes + links from aggregated data
+      const states = new Map<string, number>();
+      const banks = new Map<string, number>();
+      const cats = new Map<string, number>();
+      const statuses = new Map<string, number>();
+      const linkMap = new Map<string, number>();
+
+      // Collect top 5 per dimension
+      const stateTotals = new Map<string, number>();
+      const bankTotals = new Map<string, number>();
+      const catTotals = new Map<string, number>();
+
+      for (let i = 0; i < res.numRows; i++) {
+        const row = res.get(i);
+        if (!row) continue;
+        const st = String(row.sender_state);
+        const bk = String(row.sender_bank);
+        const ct = String(row.merchant_category);
+        const status = String(row.transaction_status);
+        const cnt = Number(typeof row.cnt === 'bigint' ? Number(row.cnt) : row.cnt);
+        stateTotals.set(st, (stateTotals.get(st) || 0) + cnt);
+        bankTotals.set(bk, (bankTotals.get(bk) || 0) + cnt);
+        catTotals.set(ct, (catTotals.get(ct) || 0) + cnt);
+      }
+
+      const top5States = new Set([...stateTotals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => e[0]));
+      const top5Banks = new Set([...bankTotals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => e[0]));
+      const top5Cats = new Set([...catTotals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => e[0]));
+
+      let nodeIdx = 0;
+      const getNode = (map: Map<string, number>, name: string) => {
+        if (!map.has(name)) map.set(name, nodeIdx++);
+        return map.get(name)!;
+      };
+
+      for (let i = 0; i < res.numRows; i++) {
+        const row = res.get(i);
+        if (!row) continue;
+        const st = top5States.has(String(row.sender_state)) ? String(row.sender_state) : 'Other States';
+        const bk = top5Banks.has(String(row.sender_bank)) ? String(row.sender_bank) : 'Other Banks';
+        const ct = top5Cats.has(String(row.merchant_category)) ? String(row.merchant_category) : 'Other';
+        const status = String(row.transaction_status);
+        const cnt = Number(typeof row.cnt === 'bigint' ? Number(row.cnt) : row.cnt);
+
+        const sIdx = getNode(states, st);
+        const bIdx = getNode(banks, bk);
+        const cIdx = getNode(cats, ct);
+        const stIdx = getNode(statuses, status);
+
+        const k1 = `${sIdx}-${bIdx}`;
+        linkMap.set(k1, (linkMap.get(k1) || 0) + cnt);
+        const k2 = `${bIdx}-${cIdx}`;
+        linkMap.set(k2, (linkMap.get(k2) || 0) + cnt);
+        const k3 = `${cIdx}-${stIdx}`;
+        linkMap.set(k3, (linkMap.get(k3) || 0) + cnt);
+      }
+
+      const allNodes = new Array(nodeIdx);
+      for (const [name, idx] of [...states, ...banks, ...cats, ...statuses]) {
+        allNodes[idx] = { name };
+      }
+
+      const links = [...linkMap.entries()].map(([key, value]) => {
+        const [source, target] = key.split('-').map(Number);
+        return { source, target, value };
+      });
+
+      await conn.close();
+      setSankeyData({ nodes: allNodes, links });
+    } catch (e) { console.error(e); }
+    finally { setSankeyLoading(false); }
+  }, [db]);
+
+  useEffect(() => {
+    if (activeSim === 'realflow' && db && !sankeyData) loadSankey();
+  }, [activeSim, db, sankeyData, loadSankey]);
+
+  // ==========================================
+  // DATA-DRIVEN: Anomaly Detection
+  // ==========================================
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [anomalies, setAnomalies] = useState<any[]>([]);
+  const [anomalyLoading, setAnomalyLoading] = useState(false);
+  const [anomalyThreshold, setAnomalyThreshold] = useState(2.5);
+
+  const loadAnomalies = useCallback(async () => {
+    if (!db) return;
+    setAnomalyLoading(true);
+    try {
+      const conn = await db.connect();
+      // Z-score anomaly detection: transactions with amount significantly above/below category mean
+      const res = await conn.query(`
+        WITH stats AS (
+          SELECT merchant_category, AVG(amount_inr) as mean_amt, STDDEV(amount_inr) as std_amt
+          FROM transactions GROUP BY merchant_category
+        )
+        SELECT t.transaction_id, t.merchant_category, t.amount_inr, t.sender_state,
+          t.device_type, t.network_type, t.transaction_status, t.fraud_flag,
+          t.hour_of_day, t.day_of_week,
+          CAST(s.mean_amt AS DOUBLE) as category_mean,
+          CAST(s.std_amt AS DOUBLE) as category_std,
+          CAST(ABS(t.amount_inr - s.mean_amt) / NULLIF(s.std_amt, 0) AS DOUBLE) as z_score
+        FROM transactions t JOIN stats s ON t.merchant_category = s.merchant_category
+        WHERE s.std_amt > 0 AND ABS(t.amount_inr - s.mean_amt) / s.std_amt > ${anomalyThreshold}
+        ORDER BY z_score DESC LIMIT 50
+      `);
+      const rows: any[] = [];
+      for (let i = 0; i < res.numRows; i++) {
+        const row = res.get(i);
+        if (row) {
+          const obj: any = {};
+          for (const [k, v] of Object.entries(row.toJSON ? row.toJSON() : row)) {
+            obj[k] = typeof v === 'bigint' ? Number(v) : v;
+          }
+          rows.push(obj);
+        }
+      }
+      await conn.close();
+      setAnomalies(rows);
+    } catch (e) { console.error(e); }
+    finally { setAnomalyLoading(false); }
+  }, [db, anomalyThreshold]);
+
+  useEffect(() => {
+    if (activeSim === 'anomaly' && db) loadAnomalies();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSim, db, anomalyThreshold]);
 
   // ==========================================
   // SIMULATION 1: Transaction Approval Optimizer
@@ -171,6 +371,9 @@ export default function SimulationsPage() {
     { id: 'outage', icon: ZapOff, title: 'Partner Downtime', desc: 'Assess third-party failure impact' },
     { id: 'expansion', icon: Users, title: 'Velocity & Risk', desc: '24x7 spatio-temporal risk heatmap' },
     { id: 'network', icon: WifiOff, title: 'Connectivity Stress', desc: 'Test infrastructure resilience' },
+    { id: 'whatif', icon: SlidersHorizontal, title: 'What-If Fraud Rules', desc: 'Test rules on real transactions', isNew: true },
+    { id: 'realflow', icon: GitBranch, title: 'Transaction Flow', desc: 'Real data flow visualization', isNew: true },
+    { id: 'anomaly', icon: Search, title: 'Anomaly Detection', desc: 'Z-score outlier detection', isNew: true },
   ];
 
   return (
@@ -198,6 +401,7 @@ export default function SimulationsPage() {
                   <div className="flex items-center gap-3 font-semibold mb-1">
                     <sim.icon className={`w-5 h-5 ${activeSim === sim.id ? 'text-primary' : 'text-slate-400'}`} />
                     {sim.title}
+                    {(sim as any).isNew && <span className="text-[9px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 rounded-full font-bold uppercase">Live</span>}
                   </div>
                   <span className={`text-xs ml-8 ${activeSim === sim.id ? 'text-primary/80' : 'text-slate-500'}`}>
                     {sim.desc}
@@ -596,6 +800,284 @@ export default function SimulationsPage() {
                       </p>
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* SIMULATION 6: What-If Fraud Rules (DATA-DRIVEN) */}
+            {activeSim === 'whatif' && (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="mb-8">
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">What-If Fraud Rule Simulator</h1>
+                    <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 rounded-full font-bold uppercase">Live Data</span>
+                  </div>
+                  <p className="text-slate-500 mt-2">Test fraud blocking rules against your <strong>real transaction dataset</strong>. See exactly how many legitimate transactions get caught in the crossfire.</p>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm">
+                  {/* Controls */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-white/5">
+                    <div>
+                      <div className="flex justify-between text-sm mb-2 font-bold">
+                        <span className="text-slate-700 dark:text-slate-300">Block Amounts Above</span>
+                        <span className="text-primary">₹{fraudAmountThreshold.toLocaleString()}</span>
+                      </div>
+                      <input type="range" min="5000" max="500000" step="5000" value={fraudAmountThreshold}
+                        onChange={(e) => setFraudAmountThreshold(Number(e.target.value))}
+                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary" />
+                      <div className="flex justify-between text-[10px] text-slate-400 mt-1"><span>₹5K</span><span>₹5L</span></div>
+                    </div>
+                    <div>
+                      <span className="block font-bold text-sm text-slate-700 dark:text-slate-300 mb-2">Block Device Type</span>
+                      <select value={fraudBlockDevice} onChange={(e) => setFraudBlockDevice(e.target.value)}
+                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg outline-none p-2 text-sm font-medium w-full">
+                        <option value="none">No device block</option>
+                        <option value="Smartphone">Block Smartphone</option>
+                        <option value="Tablet">Block Tablet</option>
+                        <option value="Feature Phone">Block Feature Phone</option>
+                      </select>
+                    </div>
+                    <div>
+                      <span className="block font-bold text-sm text-slate-700 dark:text-slate-300 mb-2">Block Network Type</span>
+                      <select value={fraudBlockNetwork} onChange={(e) => setFraudBlockNetwork(e.target.value)}
+                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg outline-none p-2 text-sm font-medium w-full">
+                        <option value="none">No network block</option>
+                        <option value="2G">Block 2G</option>
+                        <option value="3G">Block 3G</option>
+                        <option value="4G">Block 4G</option>
+                        <option value="5G">Block 5G</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <button onClick={runFraudSimulation} disabled={fraudRuleLoading || !db}
+                    className="mb-6 px-6 py-2.5 bg-primary text-white rounded-lg font-semibold text-sm hover:brightness-110 transition-all disabled:opacity-50 flex items-center gap-2">
+                    {fraudRuleLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <SlidersHorizontal className="w-4 h-4" />}
+                    Run Simulation on Real Data
+                  </button>
+
+                  {fraudRuleResult && (
+                    <div className="space-y-4">
+                      {/* Impact Cards */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="bg-red-50 dark:bg-red-950/20 rounded-xl p-4 border border-red-200 dark:border-red-800/30 text-center">
+                          <p className="text-[10px] uppercase tracking-wider text-red-600 font-medium">Transactions Blocked</p>
+                          <p className="text-2xl font-bold text-red-700 dark:text-red-400 mt-1">{fraudRuleResult.blocked.toLocaleString()}</p>
+                          <p className="text-[11px] text-red-500">{((fraudRuleResult.blocked / fraudRuleResult.totalTxns) * 100).toFixed(1)}% of all txns</p>
+                        </div>
+                        <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-xl p-4 border border-emerald-200 dark:border-emerald-800/30 text-center">
+                          <p className="text-[10px] uppercase tracking-wider text-emerald-600 font-medium">Fraud Caught</p>
+                          <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-400 mt-1">{fraudRuleResult.truePositives.toLocaleString()}</p>
+                          <p className="text-[11px] text-emerald-500">{((fraudRuleResult.truePositives / Math.max(fraudRuleResult.totalFraud, 1)) * 100).toFixed(1)}% catch rate</p>
+                        </div>
+                        <div className="bg-amber-50 dark:bg-amber-950/20 rounded-xl p-4 border border-amber-200 dark:border-amber-800/30 text-center">
+                          <p className="text-[10px] uppercase tracking-wider text-amber-600 font-medium">False Positives</p>
+                          <p className="text-2xl font-bold text-amber-700 dark:text-amber-400 mt-1">{fraudRuleResult.falsePositives.toLocaleString()}</p>
+                          <p className="text-[11px] text-amber-500">Legitimate txns blocked</p>
+                        </div>
+                        <div className="bg-purple-50 dark:bg-purple-950/20 rounded-xl p-4 border border-purple-200 dark:border-purple-800/30 text-center">
+                          <p className="text-[10px] uppercase tracking-wider text-purple-600 font-medium">Missed Fraud</p>
+                          <p className="text-2xl font-bold text-purple-700 dark:text-purple-400 mt-1">{fraudRuleResult.missedFraud.toLocaleString()}</p>
+                          <p className="text-[11px] text-purple-500">Still undetected</p>
+                        </div>
+                      </div>
+
+                      {/* Revenue Impact */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="bg-white dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                          <h4 className="text-xs font-semibold text-slate-500 uppercase mb-2">Revenue Lost (False Declines)</h4>
+                          <p className="text-2xl font-bold text-red-600">₹{(fraudRuleResult.revenueLost / 100000).toFixed(2)}L</p>
+                          <div className="mt-2 h-3 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                            <div className="h-full bg-red-500 rounded-full" style={{ width: `${Math.min((fraudRuleResult.revenueLost / (fraudRuleResult.revenueLost + fraudRuleResult.fraudPrevented + 1)) * 100, 100)}%` }} />
+                          </div>
+                        </div>
+                        <div className="bg-white dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                          <h4 className="text-xs font-semibold text-slate-500 uppercase mb-2">Fraud Value Prevented</h4>
+                          <p className="text-2xl font-bold text-emerald-600">₹{(fraudRuleResult.fraudPrevented / 100000).toFixed(2)}L</p>
+                          <div className="mt-2 h-3 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min((fraudRuleResult.fraudPrevented / (fraudRuleResult.revenueLost + fraudRuleResult.fraudPrevented + 1)) * 100, 100)}%` }} />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-500/20 p-4 rounded-xl flex gap-3">
+                        <Info className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="font-bold text-sm text-indigo-900 dark:text-indigo-300 mb-1">⚡ Real Data Verdict</h4>
+                          <p className="text-sm text-indigo-800 dark:text-indigo-200">
+                            {fraudRuleResult.revenueLost > fraudRuleResult.fraudPrevented
+                              ? `⚠️ These rules are too aggressive. You'd lose ₹${((fraudRuleResult.revenueLost - fraudRuleResult.fraudPrevented) / 100000).toFixed(2)}L more in legitimate revenue than fraud prevented. Loosen the amount threshold or remove device/network blocks.`
+                              : `✅ Net positive! These rules prevent ₹${((fraudRuleResult.fraudPrevented - fraudRuleResult.revenueLost) / 100000).toFixed(2)}L more fraud than legitimate revenue lost. ${fraudRuleResult.missedFraud > 0 ? `However, ${fraudRuleResult.missedFraud} fraudulent transactions still slip through.` : 'All fraud caught!'}`
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* SIMULATION 7: Real Transaction Flow (DATA-DRIVEN) */}
+            {activeSim === 'realflow' && (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="mb-8">
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Live Transaction Flow</h1>
+                    <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 rounded-full font-bold uppercase">Live Data</span>
+                  </div>
+                  <p className="text-slate-500 mt-2">Visualize how money flows through your system: <strong>State → Bank → Merchant Category → Transaction Status</strong>, built from real transaction data.</p>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm">
+                  {sankeyLoading || !sankeyData ? (
+                    <div className="flex flex-col items-center justify-center h-60 text-slate-400">
+                      <Loader2 className="w-8 h-8 animate-spin mb-3" />
+                      <p className="text-sm">Building flow graph from real transactions...</p>
+                    </div>
+                  ) : (
+                    <div className="h-[450px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <Sankey
+                          data={sankeyData}
+                          nodePadding={20}
+                          margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+                          link={{ stroke: '#94a3b8', strokeOpacity: 0.25 }}
+                          node={({ x, y, width, height, index, payload }: any) => {
+                            const name = payload.name || '';
+                            const isStatus = ['SUCCESS', 'FAILED', 'PENDING', 'REFUNDED'].includes(name);
+                            const fill = name === 'SUCCESS' ? '#10b981' : name === 'FAILED' ? '#ef4444' : name === 'PENDING' ? '#f59e0b' : name === 'REFUNDED' ? '#8b5cf6' : '#6366f1';
+                            return (
+                              <g>
+                                <rect x={x} y={y} width={width} height={height} fill={fill} rx={2} ry={2} opacity={0.85} />
+                                <text x={x < 300 ? x + width + 6 : x - 6} y={y + height / 2} textAnchor={x < 300 ? 'start' : 'end'}
+                                  fill="#475569" fontSize="10" dominantBaseline="middle" className="dark:fill-slate-300 font-medium">
+                                  {name.length > 15 ? name.slice(0, 15) + '...' : name}
+                                </text>
+                              </g>
+                            )
+                          }}
+                        >
+                          {/* @ts-ignore */}
+                          <RechartsTooltip
+                            contentStyle={{ borderRadius: '8px', backgroundColor: '#1e293b', color: '#fff', border: 'none' }}
+                            formatter={(val: any) => [`${Number(val).toLocaleString()} Txns`, 'Flow Volume']}
+                          />
+                        </Sankey>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  <div className="mt-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-500/20 p-4 rounded-xl flex gap-3">
+                    <Info className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-bold text-sm text-indigo-900 dark:text-indigo-300 mb-1">⚡ Flow Intelligence</h4>
+                      <p className="text-sm text-indigo-800 dark:text-indigo-200">
+                        This Sankey diagram is built from your <strong>real transaction data</strong>. Wider bands indicate higher volume. Follow the flow to identify which state→bank→category combinations drive the most failures.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SIMULATION 8: Anomaly Detection (DATA-DRIVEN) */}
+            {activeSim === 'anomaly' && (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="mb-8">
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Anomaly Detection Engine</h1>
+                    <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 rounded-full font-bold uppercase">Live Data</span>
+                  </div>
+                  <p className="text-slate-500 mt-2">Statistical Z-score analysis flags transactions with amounts significantly deviating from their category mean. Adjust sensitivity to find outliers.</p>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm">
+                  <div className="mb-6 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-white/5">
+                    <div className="flex justify-between text-sm mb-2 font-bold">
+                      <span className="text-slate-700 dark:text-slate-300">Z-Score Threshold (Sensitivity)</span>
+                      <span className="text-primary">{anomalyThreshold.toFixed(1)}σ</span>
+                    </div>
+                    <input type="range" min="1" max="5" step="0.5" value={anomalyThreshold}
+                      onChange={(e) => setAnomalyThreshold(Number(e.target.value))}
+                      className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary" />
+                    <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+                      <span>1σ (Very Sensitive)</span><span>5σ (Only Extreme)</span>
+                    </div>
+                  </div>
+
+                  {anomalyLoading ? (
+                    <div className="flex flex-col items-center justify-center h-40 text-slate-400">
+                      <Loader2 className="w-8 h-8 animate-spin mb-3" />
+                      <p className="text-sm">Running statistical analysis...</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-slate-500">
+                          <strong className="text-slate-700 dark:text-slate-200">{anomalies.length}</strong> anomalous transactions detected at {anomalyThreshold}σ threshold
+                        </p>
+                        <div className="flex gap-2 text-[10px]">
+                          <span className="px-2 py-0.5 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 rounded-full font-bold">&gt;4σ CRITICAL</span>
+                          <span className="px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 rounded-full font-bold">3-4σ HIGH</span>
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-full font-bold">&lt;3σ MODERATE</span>
+                        </div>
+                      </div>
+
+                      <div className="overflow-x-auto max-h-[400px] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                        <table className="w-full text-sm">
+                          <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800">
+                            <tr className="border-b border-slate-200 dark:border-slate-700">
+                              <th className="text-left py-2.5 px-3 text-xs font-semibold text-slate-500 uppercase">Severity</th>
+                              <th className="text-left py-2.5 px-3 text-xs font-semibold text-slate-500 uppercase">Category</th>
+                              <th className="text-right py-2.5 px-3 text-xs font-semibold text-slate-500 uppercase">Amount</th>
+                              <th className="text-right py-2.5 px-3 text-xs font-semibold text-slate-500 uppercase">Z-Score</th>
+                              <th className="text-left py-2.5 px-3 text-xs font-semibold text-slate-500 uppercase">State</th>
+                              <th className="text-left py-2.5 px-3 text-xs font-semibold text-slate-500 uppercase">Device</th>
+                              <th className="text-center py-2.5 px-3 text-xs font-semibold text-slate-500 uppercase">Fraud?</th>
+                              <th className="text-left py-2.5 px-3 text-xs font-semibold text-slate-500 uppercase">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {anomalies.map((a, i) => {
+                              const z = Number(a.z_score || 0);
+                              const sev = z > 4 ? { label: 'CRITICAL', cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' } : z > 3 ? { label: 'HIGH', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' } : { label: 'MODERATE', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' };
+                              return (
+                                <tr key={i} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                                  <td className="py-2 px-3"><span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${sev.cls}`}>{sev.label}</span></td>
+                                  <td className="py-2 px-3 font-medium text-slate-700 dark:text-slate-200">{a.merchant_category}</td>
+                                  <td className="py-2 px-3 text-right tabular-nums font-bold">₹{Number(a.amount_inr || 0).toLocaleString('en-IN')}</td>
+                                  <td className="py-2 px-3 text-right tabular-nums text-primary font-bold">{z.toFixed(1)}σ</td>
+                                  <td className="py-2 px-3 text-slate-500">{a.sender_state}</td>
+                                  <td className="py-2 px-3 text-slate-500">{a.device_type}</td>
+                                  <td className="py-2 px-3 text-center">{a.fraud_flag ? <span className="text-red-500 font-bold">🚩</span> : <span className="text-slate-300">—</span>}</td>
+                                  <td className="py-2 px-3">
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${a.transaction_status === 'SUCCESS' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : a.transaction_status === 'FAILED' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
+                                      {a.transaction_status}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-500/20 p-4 rounded-xl flex gap-3">
+                        <Info className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="font-bold text-sm text-indigo-900 dark:text-indigo-300 mb-1">⚡ Anomaly Intelligence</h4>
+                          <p className="text-sm text-indigo-800 dark:text-indigo-200">
+                            {anomalies.length > 0
+                              ? `Found ${anomalies.length} outlier transactions. ${anomalies.filter(a => a.fraud_flag).length} are confirmed fraud flags. The highest Z-score is ${Number(anomalies[0]?.z_score || 0).toFixed(1)}σ in the ${anomalies[0]?.merchant_category || 'Unknown'} category — this transaction deviates ${Number(anomalies[0]?.z_score || 0).toFixed(1)} standard deviations from the category mean.`
+                              : `No anomalies detected at the ${anomalyThreshold}σ threshold. Try lowering the sensitivity to find more outliers.`
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

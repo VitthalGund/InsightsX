@@ -695,7 +695,7 @@ function ChatWorkspace({
       }, 1500); // 1.5s debounce ensures we capture the end of streams and tools accurately
       return () => clearTimeout(timer);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [messages, toolDataStore]);
 
 
