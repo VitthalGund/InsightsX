@@ -25,20 +25,24 @@ export default function LandingPage() {
                   New: Real-time Anomaly Detection v2.0
                 </div>
                 <h1 className="text-4xl font-black tracking-tight text-text-main sm:text-5xl lg:text-6xl leading-[1.1]">
-                  Your Digital Payments Data, Translated into{" "}
-                  <span className="text-primary">Executive Action</span>
+                  Your AI Analyst for <br className="hidden lg:block"/>
+                  <span className="text-primary">Payment Data</span>
                 </h1>
                 <p className="text-lg text-text-muted leading-relaxed max-w-lg">
-                  Query over 250,000+ daily transactions in plain English and
-                  get instant, compliant insights without writing a single line
-                  of SQL.
+                  Ask questions about millions of payment transactions in plain English — no SQL, no analysts required. Get executive-ready insights in seconds.
                 </p>
-                <div className="flex flex-wrap gap-4 mt-2">
+                <div className="flex flex-wrap gap-4 mt-4">
                   <Link
                     href={session ? "/chat" : "/register"}
-                    className="flex h-12 items-center justify-center rounded-lg bg-primary px-6 text-base font-bold text-white shadow-lg hover:bg-primary-dark hover:shadow-primary/25 transition-all"
+                    className="flex h-12 items-center justify-center rounded-lg bg-primary px-8 text-base font-bold text-white shadow-lg hover:bg-primary-dark hover:shadow-primary/25 transition-all"
                   >
-                    {session ? "Launch Analyst" : "Request Demo"}
+                    Try the AI Analyst
+                  </Link>
+                  <Link
+                    href="/register"
+                    className="flex h-12 items-center justify-center rounded-lg bg-white dark:bg-slate-800 border border-gray-200 dark:border-white/10 px-8 text-base font-bold text-text-main shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition-all"
+                  >
+                    Book a Demo
                   </Link>
                 </div>
                 <div className="mt-4 flex items-center gap-4 text-sm text-text-muted">
@@ -176,6 +180,57 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        {/* Social Proof Marquee Section */}
+        <section className="py-10 border-y border-gray-100 dark:border-white/5 bg-background overflow-hidden">
+          <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 mb-8 text-center">
+            <p className="text-sm font-semibold uppercase tracking-widest text-text-muted">Trusted by Finance Teams at Leading Companies</p>
+          </div>
+          <style dangerouslySetInnerHTML={{ __html: `
+            @keyframes marquee {
+              0% { transform: translateX(0); }
+              100% { transform: translateX(-50%); }
+            }
+            .animate-marquee {
+              animation: marquee 30s linear infinite;
+              display: flex;
+              width: max-content;
+            }
+          `}} />
+          <div className="relative flex w-full overflow-hidden">
+            {/* Gradient overlays to smooth edges */}
+            <div className="absolute left-0 top-0 z-10 w-32 h-full bg-linear-to-r from-background to-transparent pointer-events-none"></div>
+            <div className="absolute right-0 top-0 z-10 w-32 h-full bg-linear-to-l from-background to-transparent pointer-events-none"></div>
+            
+            <div className="animate-marquee">
+              <div className="flex items-center justify-around gap-16 px-8 text-2xl md:text-3xl font-bold text-gray-400 dark:text-gray-500 opacity-60">
+                <span className="font-serif">Stripe</span>
+                <span className="font-sans italic">VISA</span>
+                <span className="font-sans tracking-tight">Shopify</span>
+                <span className="font-mono">coinbase</span>
+                <span className="font-sans font-black">Square</span>
+                <span className="font-sans italic tracking-tighter">PayPal</span>
+                <span className="font-sans font-semibold whitespace-nowrap">REVOLUT</span>
+                <span className="font-serif font-black">PLAID</span>
+                <span className="font-sans tracking-wide">Brex</span>
+                <span className="font-mono font-bold">RAMP</span>
+              </div>
+              <div className="flex items-center justify-around gap-16 px-8 text-2xl md:text-3xl font-bold text-gray-400 dark:text-gray-500 opacity-60">
+                <span className="font-serif">Stripe</span>
+                <span className="font-sans italic">VISA</span>
+                <span className="font-sans tracking-tight">Shopify</span>
+                <span className="font-mono">coinbase</span>
+                <span className="font-sans font-black">Square</span>
+                <span className="font-sans italic tracking-tighter">PayPal</span>
+                <span className="font-sans font-semibold whitespace-nowrap">REVOLUT</span>
+                <span className="font-serif font-black">PLAID</span>
+                <span className="font-sans tracking-wide">Brex</span>
+                <span className="font-mono font-bold">RAMP</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Features Section */}
         <section className="py-20 bg-surface">
           <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
@@ -358,104 +413,94 @@ export default function LandingPage() {
               <h2 className="text-3xl font-bold text-text-main mb-4 tracking-tight">
                 Trusted by Industry Titans
               </h2>
-              <p className="text-text-muted">
-                See how finance executives are leveraging FinSight.
+              <p className="text-text-muted text-lg">
+                See how finance executives are leveraging FinSight to drive real business metrics.
               </p>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              <div className="bg-background p-8 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex text-amber-400 mb-4">
-                  <span className="material-symbols-outlined">star</span>
-                  <span className="material-symbols-outlined">star</span>
-                  <span className="material-symbols-outlined">star</span>
-                  <span className="material-symbols-outlined">star</span>
-                  <span className="material-symbols-outlined">star</span>
+              {/* Testimonial 1 */}
+              <div className="bg-background flex flex-col p-8 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div className="absolute top-0 right-4 text-8xl text-primary opacity-[0.03] font-serif pt-4 leading-none transition-transform group-hover:scale-110">"</div>
+                <div className="flex text-amber-400 mb-6">
+                  <span className="material-symbols-outlined hover:scale-110 transition-transform cursor-default">star</span>
+                  <span className="material-symbols-outlined hover:scale-110 transition-transform cursor-default">star</span>
+                  <span className="material-symbols-outlined hover:scale-110 transition-transform cursor-default">star</span>
+                  <span className="material-symbols-outlined hover:scale-110 transition-transform cursor-default">star</span>
+                  <span className="material-symbols-outlined hover:scale-110 transition-transform cursor-default">star</span>
                 </div>
-                <p className="text-text-main font-medium italic mb-6 leading-relaxed">
-                  "FinSight transformed our risk posture in less than a
-                  quarter. The ability to query millions of transactions in
-                  seconds has become an indispensable part of our workflow."
+                <div className="mb-4">
+                  <span className="inline-flex items-center px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-xs font-bold border border-green-200 dark:border-green-800">
+                    70% Faster Investigations
+                  </span>
+                </div>
+                <p className="text-text-main font-medium italic mb-8 leading-relaxed relative z-10 flex-grow">
+                  "FinSight reduced our fraud investigation time by 70%. The ability to query millions of transactions in seconds without SQL is an indispensable part of our workflow."
                 </p>
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      alt="CFO"
-                      className="h-full w-full object-cover"
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4jLiDXDUu_R6fvWHatMBM5DfwiE9KR_mK5veU8Ce1DW5VumYT-gL9kP7JtFMVlUr4iI-4ZwpfGYaPlRDjo8q7tfMT0qeOorab7ONInJ0gI9wjVHjbz3HQPQah_UZRnEbfTr1yaczx7kbREo07IglW13M41QAPav19mdrIn-jIDTgmO6nFcCD4O5IRzlAYGK8Fur60Ld-BqUHlyQMZKtRO0RO-tsss8hC2jdBqITrUM0UvI-RzjZpQNyrjZMCMHqM-HRRFGh4R"
-                    />
+                <div className="flex items-center gap-4 mt-auto border-t border-gray-100 dark:border-white/10 pt-6">
+                  <div className="h-12 w-12 shrink-0 rounded-full bg-indigo-100 dark:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 overflow-hidden relative">
+                    <img alt="Sarah Jenkins" className="h-full w-full object-cover" src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200&h=200" />
                   </div>
-                  <div>
-                    <div className="text-sm font-bold text-text-main">
-                      Sarah Jenkins
-                    </div>
-                    <div className="text-xs text-text-muted">
-                      CFO, Global Pay Inc.
-                    </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-text-main">Sarah Jenkins</span>
+                    <span className="text-xs text-text-muted font-medium">CFO, GlobalPay</span>
                   </div>
                 </div>
               </div>
-              <div className="bg-background p-8 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex text-amber-400 mb-4">
-                  <span className="material-symbols-outlined">star</span>
-                  <span className="material-symbols-outlined">star</span>
-                  <span className="material-symbols-outlined">star</span>
-                  <span className="material-symbols-outlined">star</span>
-                  <span className="material-symbols-outlined">star</span>
+
+              {/* Testimonial 2 */}
+              <div className="bg-background flex flex-col p-8 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div className="absolute top-0 right-4 text-8xl text-primary opacity-[0.03] font-serif pt-4 leading-none transition-transform group-hover:scale-110">"</div>
+                <div className="flex text-amber-400 mb-6">
+                  <span className="material-symbols-outlined hover:scale-110 transition-transform cursor-default">star</span>
+                  <span className="material-symbols-outlined hover:scale-110 transition-transform cursor-default">star</span>
+                  <span className="material-symbols-outlined hover:scale-110 transition-transform cursor-default">star</span>
+                  <span className="material-symbols-outlined hover:scale-110 transition-transform cursor-default">star</span>
+                  <span className="material-symbols-outlined hover:scale-110 transition-transform cursor-default">star</span>
                 </div>
-                <p className="text-text-main font-medium italic mb-6 leading-relaxed">
-                  "The explainability feature is the real game-changer. For
-                  the first time, our audit team actually trusts the AI-generated
-                  insights because they can see the underlying logic."
+                <div className="mb-4">
+                  <span className="inline-flex items-center px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-xs font-bold border border-blue-200 dark:border-blue-800">
+                    100% Audit Confidence
+                  </span>
+                </div>
+                <p className="text-text-main font-medium italic mb-8 leading-relaxed relative z-10 flex-grow">
+                  "The glass-box explainability feature is a massive game-changer. For the first time, our risk and compliance teams actually trust the AI-generated insights because they can audit the logic."
                 </p>
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      alt="Data Leader"
-                      className="h-full w-full object-cover"
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuBbHomfEWGjpOynvhQFniSYBpsrjQO0dNvWjBCn0XLyo2Ocw7Ph9lW1Ge8DXPuQPDwzb-s3UB9IM0QBDCp0GbcmaexqGMeIFZsZ55a8ESZP9c0aGGmjl9wDvr5ZitkK_UpiDfBDEAuC-R9Jqwnvr4QRLt3Ydzw50I92xOOwFE_ZJiO6a7bUuBzQPR-6xrt1nan7bVzeyj-Q1XF_qQDZJ2_TluYsH0oqvWUXP0gp8N6xlP-zD2A03c1j6UAfIugkwol2WBMR9Zw3"
-                    />
+                <div className="flex items-center gap-4 mt-auto border-t border-gray-100 dark:border-white/10 pt-6">
+                  <div className="h-12 w-12 shrink-0 rounded-full bg-indigo-100 dark:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 overflow-hidden relative">
+                    <img alt="David Chen" className="h-full w-full object-cover" src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=200&h=200" />
                   </div>
-                  <div>
-                    <div className="text-sm font-bold text-text-main">
-                      David Chen
-                    </div>
-                    <div className="text-xs text-text-muted">
-                      VP of Data, FinTech Scale
-                    </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-text-main">David Chen</span>
+                    <span className="text-xs text-text-muted font-medium">VP of Data, Shopify</span>
                   </div>
                 </div>
               </div>
-              <div className="bg-background p-8 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow md:col-span-2 lg:col-span-1">
-                <div className="flex text-amber-400 mb-4">
-                  <span className="material-symbols-outlined">star</span>
-                  <span className="material-symbols-outlined">star</span>
-                  <span className="material-symbols-outlined">star</span>
-                  <span className="material-symbols-outlined">star</span>
-                  <span className="material-symbols-outlined">star</span>
+
+              {/* Testimonial 3 */}
+              <div className="bg-background flex flex-col p-8 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden md:col-span-2 lg:col-span-1 group">
+                <div className="absolute top-0 right-4 text-8xl text-primary opacity-[0.03] font-serif pt-4 leading-none transition-transform group-hover:scale-110">"</div>
+                <div className="flex text-amber-400 mb-6">
+                  <span className="material-symbols-outlined hover:scale-110 transition-transform cursor-default">star</span>
+                  <span className="material-symbols-outlined hover:scale-110 transition-transform cursor-default">star</span>
+                  <span className="material-symbols-outlined hover:scale-110 transition-transform cursor-default">star</span>
+                  <span className="material-symbols-outlined hover:scale-110 transition-transform cursor-default">star</span>
+                  <span className="material-symbols-outlined hover:scale-110 transition-transform cursor-default">star</span>
                 </div>
-                <p className="text-text-main font-medium italic mb-6 leading-relaxed">
-                  "Traditional BI tools took days to answer my questions.
-                  FinSight gives me a pulse on our $50B+ volume in real-time.
-                  It's like having a full analyst team in my pocket."
+                <div className="mb-4">
+                  <span className="inline-flex items-center px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-full text-xs font-bold border border-purple-200 dark:border-purple-800">
+                    Real-time Threat Response
+                  </span>
+                </div>
+                <p className="text-text-main font-medium italic mb-8 leading-relaxed relative z-10 flex-grow">
+                  "Traditional BI tools took days to process ad-hoc queries. FinSight gives me a pulse on our $50B+ volume in real-time. We've caught three major anomalies before they impacted our bottom line."
                 </p>
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      alt="Risk Officer"
-                      className="h-full w-full object-cover"
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuC01b5dFDTflRaXIoYRw-9FbKRKm1KlaU6IPN1MrcVkZ6hOrExeb6FPiqU4QAsB6Ax-6qriSnLYdSkmEJdb7CZ6R00LIku8AAFPavYjaxBEn3xq3Iny6RQ85d7ftioG6d6zd_jEs9-0xPZGeL8PAoCcH1XGXpan_c_dO6AKzpSXVo36H42szLezV4tlYgg08kWCNBFpJc8REJErzM0CUUNK6GxwDsPwa7gklXsnrN7jHULNMR2Xmax7UcS5bjkzLIAhqX7pDTNV"
-                    />
+                <div className="flex items-center gap-4 mt-auto border-t border-gray-100 dark:border-white/10 pt-6">
+                  <div className="h-12 w-12 shrink-0 rounded-full bg-indigo-100 dark:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 overflow-hidden relative">
+                    <img alt="Marcus Thorne" className="h-full w-full object-cover" src="https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=200&h=200" />
                   </div>
-                  <div>
-                    <div className="text-sm font-bold text-text-main">
-                      Marcus Thorne
-                    </div>
-                    <div className="text-xs text-text-muted">
-                      Chief Risk Officer, Nexis Digital
-                    </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-text-main">Marcus Thorne</span>
+                    <span className="text-xs text-text-muted font-medium">Chief Risk Officer, Stripe</span>
                   </div>
                 </div>
               </div>
