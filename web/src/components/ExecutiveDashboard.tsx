@@ -7,6 +7,7 @@ import { ComposableMap, Geographies, Geography } from 'react-simple-maps';
 import { scaleLinear } from 'd3-scale';
 import { StateAnalysisModal, type StateAnalysisData } from './StateAnalysisModal';
 import { BoardroomReport } from './BoardroomReport';
+import { QuickInsightModal, type InsightData, type InsightType } from './QuickInsightModal';
 
 const INDIA_TOPO_JSON = "/india_v5.geojson";
 const STATE_ANALYSIS_JSON = "/state-analysis.json";
@@ -50,6 +51,10 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [reportData, setReportData] = useState<any | null>(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+
+  // Quick Insight state
+  const [insightData, setInsightData] = useState<InsightData | null>(null);
+  const [insightLoading, setInsightLoading] = useState(false);
 
   // Load geo data
   useEffect(() => {
@@ -251,6 +256,57 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
     }
   }, [db, isGeneratingReport]);
 
+  // ─── Quick Insight Queries ─────────────────────────────────────────
+  const runInsight = useCallback(async (type: InsightType) => {
+    if (!db) return;
+    setInsightLoading(true);
+    setInsightData(null);
+    try {
+      const conn = await db.connect();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const toRows = (res: any) => {
+        const rows: any[] = [];
+        for (let i = 0; i < res.numRows; i++) {
+          const row = res.get(i);
+          if (row) {
+            const obj: any = {};
+            for (const [k, v] of Object.entries(row.toJSON ? row.toJSON() : row)) {
+              obj[k] = typeof v === 'bigint' ? Number(v) : v;
+            }
+            rows.push(obj);
+          }
+        }
+        return rows;
+      };
+
+      if (type === 'revenue') {
+        const res = await conn.query(`SELECT merchant_category as name, CAST(COUNT(*) AS INTEGER) as txn_count, CAST(SUM(amount_inr) AS DOUBLE) as revenue, CAST(AVG(amount_inr) AS DOUBLE) as avg_ticket FROM transactions WHERE transaction_status='SUCCESS' GROUP BY merchant_category ORDER BY revenue DESC`);
+        setInsightData({ type, title: 'Top Revenue Sectors', revenueByCategory: toRows(res) });
+      } else if (type === 'fraud') {
+        const [byCat, byDev, bySt, summary] = await Promise.all([
+          conn.query(`SELECT merchant_category as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE fraud_flag=1 GROUP BY merchant_category ORDER BY value DESC`),
+          conn.query(`SELECT device_type as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE fraud_flag=1 GROUP BY device_type ORDER BY value DESC`),
+          conn.query(`SELECT sender_state as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE fraud_flag=1 GROUP BY sender_state ORDER BY value DESC`),
+          conn.query(`SELECT CAST(SUM(fraud_flag) AS INTEGER) as total, CAST(SUM(fraud_flag) AS FLOAT)/COUNT(*)*100 as rate FROM transactions`),
+        ]);
+        const s = summary.get(0);
+        setInsightData({ type, title: 'Fraud Hotspot Analysis', fraudByCategory: toRows(byCat), fraudByDevice: toRows(byDev), fraudByState: toRows(bySt), fraudSummary: { total: Number(s?.total || 0), rate: Number(s?.rate || 0) } });
+      } else if (type === 'peak_hours') {
+        const [hourly, peaks, successRate] = await Promise.all([
+          conn.query(`SELECT CAST(hour_of_day AS VARCHAR) as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions GROUP BY hour_of_day ORDER BY hour_of_day`),
+          conn.query(`SELECT CAST(hour_of_day AS VARCHAR) as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions GROUP BY hour_of_day ORDER BY value DESC LIMIT 5`),
+          conn.query(`SELECT CAST(hour_of_day AS VARCHAR) as name, CAST(SUM(CASE WHEN transaction_status='SUCCESS' THEN 1 ELSE 0 END) AS FLOAT)/COUNT(*)*100 as value FROM transactions GROUP BY hour_of_day ORDER BY hour_of_day`),
+        ]);
+        setInsightData({ type, title: 'Peak Hour Trends', hourlyTrend: toRows(hourly), peakHours: toRows(peaks), hourlySuccessRate: toRows(successRate) });
+      }
+      await conn.close();
+    } catch (err) {
+      console.error('Insight query failed:', err);
+    } finally {
+      setInsightLoading(false);
+    }
+  }, [db]);
+
   // ─── Handle map click: instant lookup from pre-loaded JSON ────────
   const handleStateClick = (stateName: string) => {
     if (!stateName) return;
@@ -413,24 +469,24 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
           <div className="p-6 pt-0 space-y-4">
              <div 
                className="p-3 bg-slate-100/50 dark:bg-slate-800/50 rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-               onClick={() => onAnalyze("Detail the anomaly detection: Have there been any recent network failure spikes?")}
+               onClick={() => runInsight('revenue')}
              >
-               <h4 className="text-sm font-semibold">Network Failures</h4>
-               <p className="text-xs text-slate-500 mt-1">Check for 5G vs 4G failure anomalies.</p>
+               <h4 className="text-sm font-semibold">Top Revenue Sectors</h4>
+               <p className="text-xs text-slate-500 mt-1">Revenue by merchant category with avg. ticket size.</p>
              </div>
              <div 
                className="p-3 bg-slate-100/50 dark:bg-slate-800/50 rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-               onClick={() => onAnalyze("Run the fraud rule stringency simulation. What happens if we tighten rules by 20%?")}
+               onClick={() => runInsight('fraud')}
              >
-               <h4 className="text-sm font-semibold">Fraud Simulation</h4>
-               <p className="text-xs text-slate-500 mt-1">Simulate revenue lost vs fraud prevented.</p>
+               <h4 className="text-sm font-semibold">Fraud Hotspot Analysis</h4>
+               <p className="text-xs text-slate-500 mt-1">Fraud patterns by state, device & category.</p>
              </div>
              <div 
                className="p-3 bg-slate-100/50 dark:bg-slate-800/50 rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-               onClick={() => onAnalyze("Simulate an infrastructure outage of 2 hours for our top banking partner.")}
+               onClick={() => runInsight('peak_hours')}
              >
-               <h4 className="text-sm font-semibold">Outage Impact</h4>
-               <p className="text-xs text-slate-500 mt-1">Test downtime impact on processing.</p>
+               <h4 className="text-sm font-semibold">Peak Hour Trends</h4>
+               <p className="text-xs text-slate-500 mt-1">Hourly volume patterns & success rate by time.</p>
              </div>
              <div 
                className="p-3 bg-primary text-primary-foreground rounded-lg cursor-pointer hover:brightness-110 transition-all shadow-md mt-6 text-center flex items-center justify-center gap-2"
@@ -463,6 +519,15 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
         <BoardroomReport
           data={reportData}
           onClose={() => setReportData(null)}
+        />
+      )}
+
+      {/* Quick Insight Modal */}
+      {(insightData || insightLoading) && (
+        <QuickInsightModal
+          data={insightData}
+          loading={insightLoading}
+          onClose={() => { setInsightData(null); setInsightLoading(false); }}
         />
       )}
     </div>

@@ -134,25 +134,34 @@ function DonutChart({ items, size = 100 }: { items: NameValue[]; size?: number }
   const total = items.reduce((s, i) => s + i.value, 0) || 1;
   const colors = ['#6366f1', '#06b6d4', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6', '#ec4899', '#64748b'];
   const r = 38; const cx = 50; const cy = 50; const stroke = 12;
-  let cumAngle = -90;
+
+  // Pre-compute path data to avoid mutation during render
+  const paths = items.reduce<{ name: string; d: string; color: string; cumAngle: number }[]>((acc, item, i) => {
+    const prevAngle = acc.length > 0 ? acc[acc.length - 1].cumAngle : -90;
+    const angle = (item.value / total) * 360;
+    const startAngle = prevAngle;
+    const endAngle = prevAngle + angle;
+    const x1 = cx + r * Math.cos((startAngle * Math.PI) / 180);
+    const y1 = cy + r * Math.sin((startAngle * Math.PI) / 180);
+    const x2 = cx + r * Math.cos((endAngle * Math.PI) / 180);
+    const y2 = cy + r * Math.sin((endAngle * Math.PI) / 180);
+    const large = angle > 180 ? 1 : 0;
+    acc.push({
+      name: item.name,
+      d: `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`,
+      color: colors[i % colors.length],
+      cumAngle: endAngle,
+    });
+    return acc;
+  }, []);
 
   return (
     <div className="flex items-center gap-4">
       <svg viewBox="0 0 100 100" style={{ width: size, height: size }}>
-        {items.map((item, i) => {
-          const angle = (item.value / total) * 360;
-          const startAngle = cumAngle;
-          cumAngle += angle;
-          const x1 = cx + r * Math.cos((startAngle * Math.PI) / 180);
-          const y1 = cy + r * Math.sin((startAngle * Math.PI) / 180);
-          const x2 = cx + r * Math.cos(((startAngle + angle) * Math.PI) / 180);
-          const y2 = cy + r * Math.sin(((startAngle + angle) * Math.PI) / 180);
-          const large = angle > 180 ? 1 : 0;
-          return (
-            <path key={item.name} d={`M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`}
-              fill={colors[i % colors.length]} opacity="0.85" className="hover:opacity-100 transition-opacity" />
-          );
-        })}
+        {paths.map((p) => (
+          <path key={p.name} d={p.d}
+            fill={p.color} opacity="0.85" className="hover:opacity-100 transition-opacity" />
+        ))}
         <circle cx={cx} cy={cy} r={r - stroke} fill="white" className="dark:fill-slate-900" />
         <text x={cx} y={cy - 4} textAnchor="middle" className="fill-slate-800 dark:fill-white text-[10px] font-bold">{num(total)}</text>
         <text x={cx} y={cy + 8} textAnchor="middle" className="fill-slate-400 text-[5px]">TOTAL</text>
