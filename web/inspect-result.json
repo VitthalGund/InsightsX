@@ -1,0 +1,166 @@
+{
+  "_id": "69ace87f93186baee9fc22b1",
+  "userId": "69ac744889ff20072aded24c",
+  "title": "Which banks have the best success rates?",
+  "messages": [
+    {
+      "parts": [
+        {
+          "type": "text",
+          "text": "Which states have the most UPI transactions?"
+        }
+      ],
+      "id": "1772939718552",
+      "role": "user"
+    },
+    {
+      "id": "ns3k2ud6wYHBfahg",
+      "role": "assistant",
+      "parts": [
+        {
+          "type": "step-start"
+        },
+        {
+          "type": "text",
+          "text": "To understand which states are leading in UPI transactions, I will use the `geographic_distribution` tool to get a comprehensive overview of transaction volumes across different Indian states. This will help us identify the top-performing regions.",
+          "providerMetadata": {
+            "google": {
+              "thoughtSignature": "Cm4Bvj72+xsYjbRlGs6YufVOO4Q1+6uFaESTPWen2VVe+GhVsQO8A3UYbOLdRKrTpOpqsnzMBvFJ5tZ6QBWcV4kUGRQ9WA11SOGxNLKpcL9MBIGdbi5yCBU/3Ma4MSyDrJZ87n/6FZ37RU/iKNSxgQqUAQG+Pvb7kiA5xI5YqEhCHZ80fiaKjI25NMkbijnzKMf/Auw7M6zRZju+EznXDcg8VCOX8bRtXiWD5SEQ0O4uZSeFCIVowG7Ii2cwu9qv4CLp7lZkemDOxE8PAs4mBnx4vHf0kaRRUHoueKABNNepgoOJ/sZ4eG1Cizp/JTlLZnkTfl3kuPURIR+SmdYEcSzX7pWP6sg="
+            }
+          },
+          "state": "done"
+        },
+        {
+          "type": "tool-geographic_distribution",
+          "toolCallId": "8iOcEM2H5giHgphy",
+          "state": "output-available",
+          "input": {
+            "status_filter": "ALL",
+            "limit": 10
+          },
+          "output": {
+            "rowCount": 10,
+            "chartType": "bar",
+            "narrative": "Geographic distribution of UPI transactions across top 10 states."
+          }
+        },
+        {
+          "type": "step-start"
+        },
+        {
+          "type": "text",
+          "text": "The chart above, titled \"Geographic distribution of UPI transactions across top 10 states,\" reveals the states that contribute the most to the overall UPI transaction volume.\n\n> *Understanding the geographic spread of UPI transactions is crucial for identifying key markets, optimizing regional strategies, and allocating resources effectively.*\n\nThis visualization highlights:\n*   **Top-performing states:** You can observe which states have the highest number of UPI transactions, indicating strong adoption and usage.\n*   **Regional disparities:** It helps in identifying regions where UPI usage is high versus areas that might need more focus for growth.\n\nI can now delve deeper into the transaction patterns of a specific state or analyze other aspects if you have further questions!",
+          "providerMetadata": {
+            "google": {
+              "thoughtSignature": "CiIBvj72+0tNT8RN/ZNaf+1CAaLtsorlxzWj3AjWYwGvPPwdCokBAb4+9vuVGRFtwiBYdkjDt2pIEHRFW6blIxW9jO3lsh0KzTPuxmxy+MN+3Ms9Uiz/xgu0dN6DGGss3jHK/uT/XZc3AD+jxlK5LBKlVJlMNg5v3C6ODUenGqhLXjC94J1qrkBQGq/X2Ki0ZRkhrJ6l9hAPjgKqzSLdaKA/c4Y5BTCG5f6qyL1wGJkKpQIBvj72+/WMrZDeUkIV29krbgrIQevHLubBe4F9/uTRk4+Mlv2Qv+dNka+KcMP5tTw4kRQisP5UaKqVyQ2JQ74AXI9UidCIIPm7wCsMbR9dxpx+Cky8Uo6/+uWtCOyAsRzLEENKjWgyC/YsO/fk+U5G9lW6z6X0agkoDMUlwZhMzzOkDSTA73sxCiIUF4wAK6DEcPJLfpkjxRQgsiSC38jRQfrcgtGtWzO/wKPf5IVArfca6MTJJp0JVjU/zg8AYEKeirltsxpWX3kXcobvulzF745TLqYgvuM1WAQGbIqQpCUYWL9+cmmdF6trfXlx/Ui4e+49s67qVC9eCP/6YydiEVlXFcSf8K03oQT1fSuE1wOs4Ymfai2vG6dZXGzwalMtE2+ZjgqtAgG+Pvb7XrY32bNqoi9BlQAFAfiTQ25qFKSFcTFBB7ab1+BOzYb14j6EDqbJVrVzQ277LfdPui/ermj1mkn2JueUBOda8tvGTDEmURSEB7g+a42fMoAWGMaV/Qkm29aKceRWr9PHBun+QCah2UyAu4wxhVOFqelIoWaUiRibOibHiEsEWXd8ZkcF97KXECaQegCXd5oExgTdULNCx+gXUfe4Y4Qn/Libi0GggFfWf6+39IYW/vrOsG/N7MCrRlvXgIZjTs0+lEIM1kdK/tF9qm2wt6Iq82gxwHVN4qAAgcaMopj+4wySLLSLV581B5WvMLlZpG80KJ41LZ6/xGfx9ra+RiKldpNpVi0tMWGL7fnXpEllWrWiFdVinJ9eZyeck/OE+/GgxeRmW4xHS10K0QEBvj72+/ma4x8tWSeGGK4qxHzPzON53QWTw0rNkDxfiSyHPfkeNkqUphuUQy/+BDQ1t506pSsQHQgPm7Z/Mcd4Jk2qvTDt4jzvERqO3uF/oNahuv8wqFowJoGBoDvVyP0qfKFK2vnYg7kg1JUQ5IS5n9sSm+bpSWHGnuxoT8bipsg3sO1Q5ZMvCNiAcXv0/AlDwVXf/FB7m9YFhrTHyxRAZDK2dU6g8bTaLrNaIzC0ivQcURhmQUwSQJp11hTZO9YTaDEj5/uEL7w7+7prFF35lA=="
+            }
+          },
+          "state": "done"
+        }
+      ]
+    }
+  ],
+  "createdAt": "2026-03-08T03:09:51.255Z",
+  "updatedAt": "2026-03-08T03:15:24.947Z",
+  "__v": 0,
+  "toolDataStore": {
+    "F5oAcaTQ3ogvh63I": {
+      "data": [
+        {
+          "name": "SBI",
+          "value": 59598,
+          "failed": 3095
+        },
+        {
+          "name": "HDFC",
+          "value": 35677,
+          "failed": 1808
+        },
+        {
+          "name": "ICICI",
+          "value": 28270,
+          "failed": 1499
+        },
+        {
+          "name": "IndusInd",
+          "value": 23926,
+          "failed": 1247
+        },
+        {
+          "name": "Axis",
+          "value": 23803,
+          "failed": 1239
+        },
+        {
+          "name": "PNB",
+          "value": 23725,
+          "failed": 1221
+        },
+        {
+          "name": "Yes Bank",
+          "value": 23591,
+          "failed": 1269
+        },
+        {
+          "name": "Kotak",
+          "value": 19034,
+          "failed": 998
+        }
+      ],
+      "type": "bar",
+      "x": "name",
+      "y": "value",
+      "narrative": "Top 10 banks by transaction volume (success count shown).",
+      "sql": "SELECT sender_bank as name, CAST(SUM(CASE WHEN transaction_status='SUCCESS' THEN 1 ELSE 0 END) AS INTEGER) as value, CAST(SUM(CASE WHEN transaction_status='FAILED' THEN 1 ELSE 0 END) AS INTEGER) as failed FROM transactions GROUP BY sender_bank ORDER BY (value+failed) DESC LIMIT 10"
+    },
+    "8iOcEM2H5giHgphy": {
+      "data": [
+        {
+          "name": "Maharashtra",
+          "value": 37427
+        },
+        {
+          "name": "Uttar Pradesh",
+          "value": 30125
+        },
+        {
+          "name": "Karnataka",
+          "value": 29756
+        },
+        {
+          "name": "Tamil Nadu",
+          "value": 25367
+        },
+        {
+          "name": "Delhi",
+          "value": 24870
+        },
+        {
+          "name": "Telangana",
+          "value": 22435
+        },
+        {
+          "name": "Gujarat",
+          "value": 20061
+        },
+        {
+          "name": "Andhra Pradesh",
+          "value": 20006
+        },
+        {
+          "name": "Rajasthan",
+          "value": 19981
+        },
+        {
+          "name": "West Bengal",
+          "value": 19972
+        }
+      ],
+      "type": "bar",
+      "x": "name",
+      "y": "value",
+      "narrative": "Geographic distribution of UPI transactions across top 10 states.",
+      "sql": "SELECT sender_state as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE 1=1  GROUP BY sender_state ORDER BY value DESC LIMIT 10"
+    }
+  }
+}

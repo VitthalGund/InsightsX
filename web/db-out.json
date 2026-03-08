@@ -1,0 +1,176 @@
+[
+  {
+    "_id": "69ac773589ff20072aded284",
+    "userId": "69ac744889ff20072aded24c",
+    "title": "What merchant categories have the highes...",
+    "messages": [],
+    "createdAt": "2026-03-07T19:06:29.568Z",
+    "updatedAt": "2026-03-08T02:57:42.903Z",
+    "__v": 0,
+    "toolDataStore": {
+      "CEurNCKkxhRalScT": {
+        "data": [
+          {
+            "name": "Grocery",
+            "value": 94
+          },
+          {
+            "name": "Food",
+            "value": 73
+          },
+          {
+            "name": "Shopping",
+            "value": 62
+          },
+          {
+            "name": "Other",
+            "value": 50
+          },
+          {
+            "name": "Fuel",
+            "value": 48
+          }
+        ],
+        "type": "bar",
+        "x": "name",
+        "y": "value",
+        "narrative": "Top 5 categories flagged for anomalous transactions.",
+        "sql": "SELECT merchant_category as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE fraud_flag=1 GROUP BY merchant_category ORDER BY value DESC LIMIT 5"
+      },
+      "C4zBiTM6z1O225D4": {
+        "data": [
+          {
+            "name": "SBI",
+            "value": 59598,
+            "failed": 3095
+          },
+          {
+            "name": "HDFC",
+            "value": 35677,
+            "failed": 1808
+          },
+          {
+            "name": "ICICI",
+            "value": 28270,
+            "failed": 1499
+          },
+          {
+            "name": "IndusInd",
+            "value": 23926,
+            "failed": 1247
+          },
+          {
+            "name": "Axis",
+            "value": 23803,
+            "failed": 1239
+          },
+          {
+            "name": "PNB",
+            "value": 23725,
+            "failed": 1221
+          },
+          {
+            "name": "Yes Bank",
+            "value": 23591,
+            "failed": 1269
+          },
+          {
+            "name": "Kotak",
+            "value": 19034,
+            "failed": 998
+          }
+        ],
+        "type": "bar",
+        "x": "name",
+        "y": "value",
+        "narrative": "Top 10 banks by transaction volume (success count shown).",
+        "sql": "SELECT sender_bank as name, CAST(SUM(CASE WHEN transaction_status='SUCCESS' THEN 1 ELSE 0 END) AS INTEGER) as value, CAST(SUM(CASE WHEN transaction_status='FAILED' THEN 1 ELSE 0 END) AS INTEGER) as failed FROM transactions GROUP BY sender_bank ORDER BY (value+failed) DESC LIMIT 10"
+      }
+    }
+  },
+  {
+    "_id": "69ac749c89ff20072aded255",
+    "userId": "69ac744889ff20072aded24c",
+    "title": "Show me the distribution of transaction ...",
+    "messages": [
+      {
+        "parts": [
+          {
+            "type": "text",
+            "text": "Show me the distribution of transaction statuses for the 18-25 age group in Maharashtra"
+          }
+        ],
+        "id": "1772909724194",
+        "role": "user"
+      },
+      {
+        "id": "DuLkG5XLf2YJ1cAE",
+        "role": "assistant",
+        "parts": [
+          {
+            "type": "step-start"
+          },
+          {
+            "type": "text",
+            "text": "I'm on it! I will now analyze the distribution of transaction statuses for the *18-25 age group* in *Maharashtra*. This will help us understand the success, failure, pending, and refunded rates for young users in that state.",
+            "providerMetadata": {
+              "google": {
+                "thoughtSignature": "CnMBvj72+0TU1izsi+3ybMMBc9XIzQUuFNtg3Ewk0/mea4KaznMd2U6T2ED4cV1SCSskOsscqdkM62MipekwSVxaLfLrrXvdzKuTtaxi7JXRxwU0tdpfLWfwtcBmXyYUUphTONO/VLw+AAFDam84nuBwwG2oCoICAb4+9vu5Jejbo6kPwAeHx/JqXXMnlPMpPsXDBegftNxJxxIcLW2HP74Qafr3DQtgZtCGf2/HhpRevDu7ueW2mz+lBJq4FIoHpggWxtjhv8whJ7yxrclG+3t9QwzHYy/x/yJ+xsIWUzB03o+LpFxaYhDaWQZBgSfRQwDpxE3njCGRABUlmWuHtuddKquTQdIUMqzs4spw+sh4daUAgeyK2ZM/iYQC4S3mKj72zOvfa9OhlkKnVqSmY64AJ0b7UVN5PJFk9XQTpQ0Ycbhm4r5L59Uj1wVVmemiqUaxTRC7MlJ8LCQaEM9hNWB5+asNT0eYj9+vIhuOBIRMiT14Fx9VmYIVClIBvj72+x7HK3woJnKU6W1HXowrW2nLmRn+4DbB/poGCoLbwRZJGoOplOa3j/dfpD2I6f+TCRaJH4dWroKMbL6AZQUKPJ4xfT+ZGRgwZdd9OLNx"
+              }
+            },
+            "state": "done"
+          },
+          {
+            "type": "tool-analyze_transaction_status",
+            "toolCallId": "DmcN7lK4KKcz5fnH",
+            "state": "output-available",
+            "input": {
+              "age_group": "18-25",
+              "state": "Maharashtra"
+            },
+            "output": {
+              "rowCount": 2,
+              "chartType": "pie",
+              "narrative": "Transaction status distribution for 18-25 demographic in Maharashtra."
+            }
+          },
+          {
+            "type": "step-start"
+          },
+          {
+            "type": "text",
+            "text": "Here's the analysis of transaction statuses for the *18-25 age group* in *Maharashtra*:\n\nThe chart above displays the **distribution of transaction statuses** for this demographic, providing a clear picture of how transactions are faring in terms of success, failure, pending, and refunded states.\n\n> *This analysis is crucial for understanding user experience and identifying potential areas for improvement within this key demographic in Maharashtra.*\n\n**Key Takeaways:**\n\n*   By examining the proportions of each status, we can gauge the overall efficiency and reliability of transactions for young users in this region.\n*   A high percentage of 'SUCCESS' indicates a smooth user experience, while elevated 'FAILED' or 'PENDING' rates might signal underlying issues such as network problems, bank downtimes, or user errors that need investigation.\n\nIf you'd like to dive deeper into any specific status or compare this with another age group or state, just let me know!",
+            "providerMetadata": {
+              "google": {
+                "thoughtSignature": "CnkBvj72+zhf+Jn7kn0Boj9Xk2lPMCU2qEemDK5+NU7B1jkTckXCJQSjajpd5R0936RpNVxeQjh6dIIWizpsvBxmKQS5l21vhf8OXBhO8C+DQyTPgXcxW1ajIdHcYlS6JVQZkzSfh4SVY5X7Rgga1pzszRM7o5tp/tjHCpUCAb4+9vuXAZBdddbnYUPaMV7h7RbSNfH5EBkFRw6sFYGFDaCZV1xNXqWS+CqV5uafDmnVutbzgeKWcAAcZ+/fbGoio0FpPHmgkHS7IjB2VOKZ9hF309tzjI1sSTxrjR7eEt380VPVml4CTMQK2OdAGCm86iYioU5DV0gr8/TrlfeyRYm64odLg6/6TA5CbQ87F8uc1R1D5vYKcC7nzf2Ugs0VmK+fvviFYBDY4UBLFD6DBBwD+ug+0AX/b5VtsY4DpeRREg3Nmc6VRolu+WnD6V3Fk3GRqlxJWpB5VWnOdGVE6uzzVQGr2hHUootbySyCEzTcWC9ipJVeasT0mRkBDzFFVOIcydudYEIaQDPMAYRxXOTW+gqnAQG+Pvb7sQFPYPUFFbaEa/FG5ZitMYavmPQR/ERXN6yMMEK+WZyA7CCpzagdm8J+twxJlRAiyGhDGx6woHHKutJhPC8C/f5CLPP7cTsbo1JxTyG3tcBl7+CprjXbuJ9PB9BCcSJkOwhMMRffapU5lDSqJQAlgi4Hv91i82/yyYTJIGJV+buXMkcfSLN6TkWscVLPo/HRo5Ev7dfUIcAaAXVr9sawzQCv"
+              }
+            },
+            "state": "done"
+          }
+        ]
+      }
+    ],
+    "createdAt": "2026-03-07T18:55:24.179Z",
+    "updatedAt": "2026-03-07T18:55:31.793Z",
+    "__v": 0,
+    "toolDataStore": {
+      "DmcN7lK4KKcz5fnH": {
+        "data": [
+          {
+            "name": "SUCCESS",
+            "value": 8991
+          },
+          {
+            "name": "FAILED",
+            "value": 427
+          }
+        ],
+        "type": "pie",
+        "x": "name",
+        "y": "value",
+        "narrative": "Transaction status distribution for 18-25 demographic in Maharashtra.",
+        "sql": "SELECT transaction_status as name, CAST(COUNT(*) AS INTEGER) as value FROM transactions WHERE sender_age_group='18-25' AND sender_state='Maharashtra' GROUP BY transaction_status"
+      }
+    }
+  }
+]

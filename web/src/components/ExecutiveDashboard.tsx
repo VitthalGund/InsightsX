@@ -30,6 +30,14 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
     stateVolumes: {}
   });
   const [loading, setLoading] = useState(true);
+  const [geoData, setGeoData] = useState<any>(null);
+
+  useEffect(() => {
+    fetch(INDIA_TOPO_JSON)
+      .then(res => res.json())
+      .then(data => setGeoData(data.features || data))
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     async function fetchKPIs() {
@@ -193,33 +201,35 @@ export function ExecutiveDashboard({ onAnalyze }: ExecutiveDashboardProps) {
                   }}
                   className="w-full h-full"
                 >
-                  <Geographies geography={INDIA_TOPO_JSON}>
-                    {({ geographies }) =>
-                      geographies.map((geo) => {
-                        const geoName: string = geo.properties.st_nm || geo.properties.NAME_1 || geo.properties.name || "";
-                        const stateEntry = Object.entries(kpis.stateVolumes).find(([st]) => 
-                          geoName.toLowerCase() === st.toLowerCase() ||
-                          geoName.replace(/&/g, "and").toLowerCase() === st.toLowerCase() ||
-                          st.toLowerCase().includes(geoName.toLowerCase())
-                        );
-                        const stateName = stateEntry ? stateEntry[0] : "";
-                        const volume = stateEntry ? stateEntry[1] : 0;
-                        const fill = volume > 0 ? colorScale(volume) : "#f1f5f9"; // Default slate-100
-                        return (
-                          <Geography
-                            key={geo.rsmKey}
-                            geography={geo}
-                            fill={fill}
-                            stroke="#cbd5e1"
-                            strokeWidth={0.5}
-                            className="transition-all hover:opacity-80 hover:stroke-primary focus:outline-none cursor-pointer"
-                            onClick={() => onAnalyze(`Analyze transactions in ${stateName || 'this region'}.`)}
-                            onMouseEnter={() => {}}
-                          />
-                        );
-                      })
-                    }
-                  </Geographies>
+                  {geoData && (
+                    <Geographies geography={geoData}>
+                      {({ geographies }) =>
+                        geographies.map((geo) => {
+                          const geoName: string = geo.properties.st_nm || geo.properties.NAME_1 || geo.properties.name || "";
+                          const stateEntry = Object.entries(kpis.stateVolumes).find(([st]) => 
+                            geoName.toLowerCase() === st.toLowerCase() ||
+                            geoName.replace(/&/g, "and").toLowerCase() === st.toLowerCase() ||
+                            st.toLowerCase().includes(geoName.toLowerCase())
+                          );
+                          const stateName = stateEntry ? stateEntry[0] : "";
+                          const volume = stateEntry ? stateEntry[1] : 0;
+                          const fill = volume > 0 ? colorScale(volume) : "#f1f5f9"; // Default slate-100
+                          return (
+                            <Geography
+                              key={geo.rsmKey || geo.properties.name}
+                              geography={geo}
+                              fill={fill}
+                              stroke="#cbd5e1"
+                              strokeWidth={0.5}
+                              className="transition-all hover:opacity-80 hover:stroke-primary focus:outline-none cursor-pointer"
+                              onClick={() => onAnalyze(`Analyze transactions in ${stateName || 'this region'}.`)}
+                              onMouseEnter={() => {}}
+                            />
+                          );
+                        })
+                      }
+                    </Geographies>
+                  )}
                 </ComposableMap>
              </div>
           </div>

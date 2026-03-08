@@ -67,7 +67,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         const updatedChat = await Chat.findOneAndUpdate(
             { _id: chatId, userId: session.user.id },
             { $set: { title: title.trim() } },
-            { new: true, runValidators: true }
+            { returnDocument: 'after', runValidators: true }
         );
 
         if (!updatedChat) {
@@ -151,7 +151,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         const updatedChat = await Chat.findOneAndUpdate(
             { _id: chatId, userId: session.user.id },
             { $set: updatePayload },
-            { new: true, runValidators: true }
+            { returnDocument: 'after', runValidators: true }
         );
 
         if (!updatedChat) {

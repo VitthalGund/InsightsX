@@ -7,7 +7,7 @@ import { GenerativeInsightCard, type ChartType } from '@/components/GenerativeIn
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { MermaidDiagram } from '@/components/MermaidDiagram';
-import { Send, Loader2, Database, AlertCircle, LogOut, PlusCircle, MessageSquare, Trash2, Pencil, FileText } from 'lucide-react';
+import { Send, Loader2, Database, AlertCircle, LogOut, PlusCircle, MessageSquare, Trash2, Pencil, FileText, Mic, Image as ImageIcon, X } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback, Suspense, useMemo } from 'react';
 import { useSession, signOut } from "next-auth/react";
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -95,6 +95,7 @@ function ChatDashboardContainer() {
   const [chatHistory, setChatHistory] = useState<{_id: string, title: string, updatedAt: string}[]>([]);
   const [activeChatData, setActiveChatData] = useState<{messages: UIMessage[], toolDataStore: Record<string, ToolData>} | null>(null);
   const [isLoadingChat, setIsLoadingChat] = useState(false);
+  const [newChatKey, setNewChatKey] = useState(0);
   
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
@@ -107,7 +108,7 @@ function ChatDashboardContainer() {
   const fetchChats = useCallback(async () => {
     if (!session?.user) return;
     try {
-      const res = await fetch('/api/chats');
+      const res = await fetch('/api/chats', { cache: 'no-store' });
       const data = await res.json();
       if (data.chats) setChatHistory(data.chats);
     } catch(e) { console.error('Failed to fetch history', e) }
@@ -126,11 +127,32 @@ function ChatDashboardContainer() {
     const fetchActive = async () => {
       setIsLoadingChat(true);
       try {
-        const res = await fetch(`/api/chats/${chatId}`);
+        const res = await fetch(`/api/chats/${chatId}`, { cache: 'no-store' });
         const data = await res.json();
         if (isMounted && data.chat) {
           setActiveChatData({
-            messages: data.chat.messages || [],
+            // Ensure every message returned from DB has a fallback string content, since useChat will silently discard raw parts arrays in older versions.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            messages: (data.chat.messages || []).map((m: any) => {
+              const mCopy = { ...m };
+              if (!mCopy.content && mCopy.parts?.length) {
+                mCopy.content = mCopy.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('\n');
+              }
+              if (!mCopy.content) mCopy.content = ' '; // ensure non-empty string for SDK
+              
+              if (!mCopy.toolInvocations && mCopy.parts?.length) {
+                const tools = mCopy.parts.filter((p: any) => p.type === 'tool-invocation' || p.type?.startsWith('tool-') || p.toolCallId);
+                if (tools.length > 0) {
+                  mCopy.toolInvocations = tools.map((p: any) => ({
+                    toolCallId: p.toolCallId || 'unknown',
+                    toolName: p.toolName || p.type?.replace('tool-', '') || 'tool',
+                    args: p.args || p.input || {},
+                    state: p.state || 'result'
+                  }));
+                }
+              }
+              return mCopy;
+            }),
             toolDataStore: data.chat.toolDataStore || {}
           });
         }
@@ -145,7 +167,12 @@ function ChatDashboardContainer() {
   }, [chatId]);
 
   const handleCreateNewChat = () => {
-    router.replace('/chat');
+    if (!chatId) {
+      setNewChatKey(prev => prev + 1);
+      setActiveChatData({ messages: [], toolDataStore: {} });
+    } else {
+      router.replace('/chat');
+    }
   };
 
   const handleRenameSubmit = async (id: string, newTitle: string) => {
@@ -213,7 +240,7 @@ function ChatDashboardContainer() {
           </div>
           <button 
             onClick={handleCreateNewChat}
-            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary-dark rounded-xl font-medium transition-colors border border-primary/20 text-sm"
+            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary-dark rounded-xl font-medium transition-colors border border-primary/20 text-sm cursor-pointer"
           >
             <PlusCircle className="w-4 h-4" />
             New Chat
@@ -318,7 +345,7 @@ function ChatDashboardContainer() {
           </div>
         ) : (
           <ChatWorkspace 
-            key={chatId || 'new'}
+            key={chatId || `new-${newChatKey}`}
             chatId={chatId}
             initialMessages={activeChatData.messages}
             initialToolDataStore={activeChatData.toolDataStore}
@@ -351,6 +378,71 @@ function ChatWorkspace({
   const [toolDataStore, setToolDataStore] = useState<Record<string, ToolData>>(initialToolDataStore);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [images, setImages] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
+      setImages(prev => {
+        const combined = [...prev, ...newFiles];
+        return combined.slice(0, 3);
+      });
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+  
+  const removeImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
+  
+  const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const toggleListening = () => {
+    if (isListening) {
+      if (recognitionRef.current) recognitionRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Your browser does not support Speech Recognition.");
+      return;
+    }
+    if (!recognitionRef.current) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      recognition.onresult = (event: any) => {
+        let finalTrans = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTrans += event.results[i][0].transcript;
+          }
+        }
+        if (finalTrans) setInput(prev => prev + (prev.endsWith(' ') ? '' : ' ') + finalTrans);
+      };
+      recognition.onerror = () => setIsListening(false);
+      recognition.onend = () => setIsListening(false);
+      recognitionRef.current = recognition;
+    }
+    try {
+      recognitionRef.current.start();
+      setIsListening(true);
+    } catch(e) { console.error(e); setIsListening(false); }
+  };
   const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
   const [isToolExecuting, setIsToolExecuting] = useState(false);
   const [input, setInput] = useState('');
@@ -366,19 +458,30 @@ function ChatWorkspace({
   const sanitize = (str: string) => str.replace(/'/g, "''");
 
   // Active sync function that saves state to backend
-  const syncChatStateToBackend = async (msgs: UIMessage[], tds: Record<string, ToolData>) => {
+  const syncChatStateToBackend = async (msgs: UIMessage[] | null, tds: Record<string, ToolData> | null) => {
     const cid = activeIdRef.current;
     if (!cid) return;
+    
+    console.log(`[SYNC] MongoDB Save Triggered for ${cid}: msgs.len=${msgs?.length ?? 'skip'}, tds.keys=${tds ? Object.keys(tds).length : 'skip'}`);
+    
     try {
+      const payload: any = {};
+      if (msgs !== null) payload.messages = msgs;
+      if (tds !== null) payload.toolDataStore = tds;
+
+      if (Object.keys(payload).length === 0) return;
+
       await fetch(`/api/chats/${cid}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: msgs, toolDataStore: tds })
+        body: JSON.stringify(payload)
       });
     } catch (e) { console.error('Failed to sync chat state to DB', e); }
   };
 
   const toolDataStoreRef = useRef(toolDataStore);
+  const messagesRef = useRef(initialMessages);
+  
   useEffect(() => {
     toolDataStoreRef.current = toolDataStore;
   }, [toolDataStore]);
@@ -402,8 +505,6 @@ function ChatWorkspace({
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     // @ts-expect-error AI SDK type definitions for initialMessages mismatch in local environment
     initialMessages,
-    
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async onToolCall({ toolCall }: { toolCall: any }) {
       setIsToolExecuting(true);
       if (!db || toolCall.dynamic) { setIsToolExecuting(false); return; }
@@ -515,7 +616,8 @@ function ChatWorkspace({
           setToolDataStore(nextToolDataStore);
           
           if (activeIdRef.current) {
-             syncChatStateToBackend(chatHelpers.messages, nextToolDataStore);
+             // Only sync the tool data here to prevent overwriting messages with a stale React snapshot
+             syncChatStateToBackend(null, nextToolDataStore);
           }
 
           chatHelpers.addToolResult({
@@ -537,7 +639,19 @@ function ChatWorkspace({
     }
   });
 
-  const { messages, status } = chatHelpers;
+  const { messages } = chatHelpers;
+  
+  // Enforce manual injection of history if the AI SDK completely rejected them on mount
+  useEffect(() => {
+    if (messages.length === 0 && initialMessages.length > 0) {
+      console.log('[hydrate] Forcing rejected initialMessages into state', initialMessages.length);
+      chatHelpers.setMessages(initialMessages);
+    }
+  }, [initialMessages]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
   
   // Proactive Anomaly Detection
   useEffect(() => {
@@ -567,21 +681,22 @@ function ChatWorkspace({
   }, [db, messages.length]);
   
   // DEBUG LOG
-  console.log('[ChatWorkspace Render Mode] messages.length:', messages.length, 'status:', status, 'isCreatingChat:', isCreatingChat);
-  const isLoading = isToolExecuting || status === 'submitted' || status === 'streaming' || isCreatingChat;
+  const isChatLoading = (chatHelpers as any).isLoading || (chatHelpers as any).status === 'streaming' || (chatHelpers as any).status === 'submitted';
+  const isLoading = isToolExecuting || isChatLoading || isCreatingChat;
 
   useEffect(() => {
     activeIdRef.current = chatId;
   }, [chatId]);
 
   useEffect(() => {
-    if (status === 'ready' || status === 'error') {
-      if (activeIdRef.current && messages.length > 0 && messages !== initialMessages) {
+    if (activeIdRef.current && messages.length > 0) {
+      const timer = setTimeout(() => {
         syncChatStateToBackend(messages, toolDataStore);
-      }
+      }, 1500); // 1.5s debounce ensures we capture the end of streams and tools accurately
+      return () => clearTimeout(timer);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, status]);
+  }, [messages, toolDataStore]);
 
 
   useEffect(() => {
@@ -600,11 +715,11 @@ function ChatWorkspace({
   const onSubmit = async (e?: React.FormEvent, overrideInput?: string) => {
     e?.preventDefault();
     const textToSubmit = overrideInput !== undefined ? overrideInput : input;
-    if (!textToSubmit.trim() || isLoading) return;
+    if ((!textToSubmit.trim() && images.length === 0) || isLoading) return;
     
     setAnomalyAlert(null); // Clear alert on new query
     setInput('');
-    setPendingQuery(textToSubmit);
+    setPendingQuery(textToSubmit || '[Image attached]');
     setIsAutoScrollEnabled(true);
     
     let currentChatId = activeIdRef.current;
@@ -616,13 +731,13 @@ function ChatWorkspace({
          const res = await fetch('/api/chats', {
            method: 'POST',
            headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({ initialMessage: textToSubmit })
+           body: JSON.stringify({ initialMessage: textToSubmit || 'Image Message' })
          });
          const data = await res.json();
          if (data.id) {
            currentChatId = data.id;
            activeIdRef.current = data.id;
-           // window.history.replaceState(null, '', `/chat?id=${data.id}`);
+           window.history.replaceState(null, '', `/chat?id=${data.id}`);
            refetchHistory(); 
          }
        } catch(e) { 
@@ -633,13 +748,30 @@ function ChatWorkspace({
     }
     
     const msgId = Date.now().toString();
-    // Forcefully update the UI immediately to transition away from the landing page
-    const newMsg = { id: msgId, role: 'user', content: textToSubmit, parts: [{ type: 'text', text: textToSubmit }] };
-    chatHelpers.setMessages([...chatHelpers.messages, newMsg as any]);
-    
-    chatHelpers.sendMessage({ messageId: msgId, text: textToSubmit }).catch(e => {
-        console.error('Failed to send message:', e);
-    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parts: any[] = [];
+    if (textToSubmit.trim()) parts.push({ type: 'text', text: textToSubmit });
+
+    if (images.length > 0) {
+      const imagePromises = images.map(fileToDataUrl);
+      const dataUrls = await Promise.all(imagePromises);
+      dataUrls.forEach(url => {
+        parts.push({ type: 'image', image: url });
+      });
+      setImages([]);
+    }
+
+    const newMsg = { id: msgId, role: 'user', content: textToSubmit || '[Image attachment]', parts };
+
+    // Check if the chat transport implements standard ai sdk 'append' fallback
+    if ((chatHelpers as any).append) {
+      (chatHelpers as any).append(newMsg as any).catch((e: any) => console.error('Failed to append message:', e));
+    } else {
+      chatHelpers.setMessages([...chatHelpers.messages, newMsg as any]);
+      chatHelpers.sendMessage({ messageId: msgId, text: textToSubmit || '[Image attachment]' }).catch(e => {
+          console.error('Failed to send message:', e);
+      });
+    }
     
     setPendingQuery('');
   };
@@ -658,16 +790,18 @@ function ChatWorkspace({
   return (
     <>
       <div 
-        className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-8 w-full max-w-4xl mx-auto py-8 z-0 relative [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full"
+        className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-8 w-full max-w-4xl mx-auto pt-8 pb-32 z-0 relative [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full"
         ref={scrollRef}
         onScroll={handleScroll}
       >
         {messages.length === 0 && !isCreatingChat && (
-          <div className="h-full flex flex-col items-center justify-center text-text-muted space-y-4">
-            <div className="h-16 w-16 bg-primary/20 rounded-2xl flex items-center justify-center shadow-lg rotate-3">
-              <Database className="h-8 w-8 text-primary -rotate-3" />
+          <div className="h-full flex flex-col items-center justify-start text-text-muted space-y-4 pt-24 pb-12">
+            <div className="flex items-center gap-4 mb-2">
+              <div className="h-16 w-16 bg-primary/20 rounded-2xl flex items-center justify-center shadow-lg rotate-3 shrink-0">
+                <Database className="h-8 w-8 text-primary -rotate-3" />
+              </div>
+              <h2 className="text-3xl font-bold text-text-main shadow-transparent">InsightsX Analytics</h2>
             </div>
-            <h2 className="text-2xl font-bold text-text-main">InsightsX Analytics</h2>
             <p className="text-center max-w-md text-text-muted mb-8 text-[15px]">
               Ask anything about your loaded dataset. Get visualizations, business insights, and strategic analysis — all processed locally in your browser.
             </p>
@@ -692,9 +826,9 @@ function ChatWorkspace({
         {messages.map((m) => {
           // FIX: The silent UI bug. Standard user messages have `content` string, not `parts`.
            
-          const textContent = m.parts 
+          const textContent = m.parts && m.parts.length > 0
             ? m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('\n')
-            : '';
+            : (m as any).content || '';
 
           // FIX: Standardize tool extractions to support AI SDK v3 / v4 mixed formats 
           const toolInvocations = ('toolInvocations' in m && m.toolInvocations) ? (m as any).toolInvocations as any[] : [];
@@ -810,28 +944,77 @@ function ChatWorkspace({
       </div>
 
       <div className="p-4 bg-background border-t border-gray-200 dark:border-white/10 pb-8 px-8 max-w-4xl mx-auto w-full transition-colors shrink-0 z-10 bg-linear-to-t from-background via-background to-transparent">
-        <form onSubmit={onSubmit} className="relative flex items-center shadow-lg rounded-full">
+        
+        {images.length > 0 && (
+          <div className="flex gap-2 mb-3 px-4">
+            {images.map((file, i) => (
+              <div key={i} className="relative group">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={URL.createObjectURL(file)} alt="Upload preview" className="w-16 h-16 object-cover rounded-lg border border-primary/20 shadow-sm" />
+                <button
+                  type="button"
+                  onClick={() => removeImage(i)}
+                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <form onSubmit={onSubmit} className="relative flex items-center shadow-lg rounded-full bg-surface">
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            ref={fileInputRef}
+            onChange={handleImageUpload}
+          />
+          <button
+            type="button"
+            className="absolute left-3 p-2 text-text-muted hover:text-primary transition-colors disabled:opacity-50"
+            disabled={isLoading || images.length >= 3}
+            onClick={() => fileInputRef.current?.click()}
+            title={images.length >= 3 ? "Maximum 3 images allowed" : "Attach Image"}
+          >
+            <ImageIcon className="h-5 w-5" />
+          </button>
+          
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask anything about the UPI transaction data... (e.g., 'Compare failures on 4G and 5G')"
-            className="w-full bg-surface border-gray-200 dark:border-white/10 border text-text-main placeholder:text-text-muted rounded-full pl-6 pr-14 py-4 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-sans text-[15px]"
+            className="w-full bg-transparent border border-gray-200 dark:border-white/10 text-text-main placeholder:text-text-muted rounded-full pl-12 pr-28 py-4 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-sans text-[15px]"
             disabled={isLoading}
           />
-          <button
-            id="chat-submit-btn"
-            type="submit"
-            disabled={isLoading || (!input?.trim() && !pendingQuery)}
-            className="absolute right-2 p-2.5 bg-primary text-white rounded-full hover:bg-primary-dark disabled:opacity-50 disabled:hover:bg-primary transition-colors"
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </button>
+          
+          <div className="absolute right-2 flex items-center gap-1">
+            <button
+              type="button"
+              className={`p-2.5 rounded-full transition-colors ${isListening ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20' : 'text-text-muted hover:text-primary hover:bg-primary/10'}`}
+              disabled={isLoading}
+              onClick={toggleListening}
+              title="Voice Input"
+            >
+              <Mic className="h-5 w-5" />
+            </button>
+            <button
+              id="chat-submit-btn"
+              type="submit"
+              disabled={isLoading || (!input?.trim() && !pendingQuery && images.length === 0)}
+              className="p-2.5 bg-primary text-white rounded-full hover:bg-primary-dark disabled:opacity-50 disabled:hover:bg-primary transition-colors"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </button>
+          </div>
         </form>
-        <div className="text-center mt-3 text-xs text-text-muted">
+        <div className="text-center mt-5 text-[11px] text-text-muted">
           AI-powered analytics processed securely in your browser. Zero data leaves your device.
         </div>
       </div>
