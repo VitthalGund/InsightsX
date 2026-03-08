@@ -159,6 +159,12 @@ export const tools = {
     generate_boardroom_report: {
         description: 'Generate a comprehensive executive summary boardroom report. ALWAYS use this tool when the user asks for a boardroom report.',
         inputSchema: z.object({})
+    },
+    adversarial_debate: {
+        description: 'Trigger a Strategy Debate between two AI personas with opposing viewpoints. Use this when the user asks a strategic, policy, or macro question like "Should we tighten fraud rules?", "Should we expand to rural markets?", etc. This spawns Risk-Averse vs Growth-Focused AI arguments side by side.',
+        inputSchema: z.object({
+            question: z.string().describe('The strategic question to debate'),
+        })
     }
 };
 
@@ -236,4 +242,6 @@ Structure responses with:
 - "Peak"/"busiest" → peak_usage_analysis
 - "Demographics"/"age" → user_demographics_analysis
 - "Simulate fraud"/"tighten rules"/"stringency" → simulate_fraud_rule
-- "Outage"/"downtime"/"simulation"/"impact" → simulate_outage`;
+- "Outage"/"downtime"/"simulation"/"impact" → simulate_outage
+- "Should we"/"debate"/"pros and cons"/"strategy"/"tighten"/"expand"/"policy" → adversarial_debate (spawns two opposing AI arguments)
+- "Boardroom report"/"executive summary"/"full report" → generate_boardroom_report`;

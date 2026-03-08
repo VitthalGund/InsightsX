@@ -647,7 +647,7 @@ function ChatWorkspace({
       console.log('[hydrate] Forcing rejected initialMessages into state', initialMessages.length);
       chatHelpers.setMessages(initialMessages);
     }
-  }, [initialMessages]);
+  }, [chatHelpers, initialMessages, messages.length]);
 
   useEffect(() => {
     messagesRef.current = messages;
